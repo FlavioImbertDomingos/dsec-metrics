@@ -20,7 +20,7 @@ Use GitHub private vulnerability reporting on the repository's Security tab. See
 | Transport | TLS 1.2+ at the edge with HSTS; TLS 1.3 with `verify-full` to Postgres; production mode refuses unverified database TLS | `Caddyfile`, `compose.yaml` |
 | Browser | CSP with `script-src 'self'` and no inline scripts, `frame-ancestors 'none'`, COOP, CORP, `nosniff`, no referrer, restrictive Permissions-Policy | `deploy/docker/Caddyfile`, checked in `web/e2e/signin.spec.ts` |
 | Containers | Distroless, no shell, non-root, read-only root filesystem, all capabilities dropped, `no-new-privileges`, memory and CPU limits | `deploy/docker/*.Dockerfile`, `compose.yaml` |
-| Network | Only the web service publishes a port (loopback by default); the backend network has no outbound access | `compose.yaml` |
+| Network | Only the web service publishes a port (loopback by default); the backend network has no outbound access; only the worker joins the `collectors` network, and collectors call only allowlisted hosts after an address check | `compose.yaml` |
 | Secrets | Docker secrets as files, never environment variables; development CA key deleted after use | `scripts/dev-secrets.sh` |
 | Supply chain | Hash-locked dependencies, one-week release cooldown, SHA-pinned actions, digest-pinned images, no install scripts in pnpm | `uv.lock`, `web/pnpm-workspace.yaml`, `.github/` |
 | CI gates | ruff, mypy, eslint, tsc, bandit, semgrep, pip-audit, osv-scanner, gitleaks, zizmor, trivy | [ADR-0005](../adr/0005-security-gate-policy.md) |

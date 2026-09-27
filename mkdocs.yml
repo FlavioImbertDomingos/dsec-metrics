@@ -50,6 +50,14 @@ nav:
   - Architecture: architecture.md
   - Definition language: definitions.md
   - Plugin SDK: plugins.md
+  - Collectors:
+      - collectors/index.md
+      - rest: collectors/rest.md
+      - aws: collectors/aws.md
+      - vault: collectors/vault.md
+      - jira: collectors/jira.md
+      - servicenow: collectors/servicenow.md
+      - github: collectors/github.md
   - Dashboards and API: dashboards.md
   - Reports and evidence packages: reports.md
   - Audit log and auditors: audit.md
@@ -72,6 +80,8 @@ nav:
       - adr/0010-pdf-rendering.md
       - adr/0011-evidence-packages.md
       - adr/0012-audit-log-and-roles.md
+      - adr/0013-outbound-http-and-ssrf.md
+      - adr/0014-aws-signing-without-the-sdk.md
       - adr/template.md
   - Plans:
       - M0 foundations: plans/m0.md

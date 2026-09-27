@@ -35,7 +35,7 @@ flowchart LR
 
 `tests/unit/test_import_boundaries.py` enforces the `core` rule: it fails if any module under `core` imports another project package or an I/O library.
 
-## What exists after M0
+## Containers and networks
 
 ```mermaid
 flowchart LR
@@ -49,14 +49,17 @@ flowchart LR
     migrate[migrate: one-shot]
     pg[(postgres)]
   end
+  sources([Allowlisted source APIs])
   web -- "HTTP /api" --> api
+  worker -- "collectors network: HTTPS to allowlisted hosts" --> sources
   api -- "TLS 1.3, verify-full" --> pg
   worker -- "TLS 1.3, verify-full" --> pg
   migrate -- "TLS 1.3, verify-full" --> pg
 ```
 
 - `web` is the only service with a published port, bound to 127.0.0.1 by default.
-- The `backend` network is `internal: true`, so the API, worker and database cannot open outbound connections. Collectors (M4) will get a separate egress path.
+- The `backend` network is `internal: true`. The API and database cannot open outbound connections.
+- Only the worker also joins the `collectors` network, which can reach outside. Collectors may call only hosts in `DSEC_COLLECTOR_ALLOWED_HOSTS`, checked on every request ([ADR-0013](adr/0013-outbound-http-and-ssrf.md)). With the allowlist empty, the default, nothing is called.
 - The hop from Caddy to the API is plain HTTP inside the internal network. The threat model records this.
 - `api`, `worker` and `migrate` run the same image with different commands.
 

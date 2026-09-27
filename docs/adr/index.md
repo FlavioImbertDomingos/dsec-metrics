@@ -16,3 +16,5 @@ Each significant decision is recorded here with its context, the decision and it
 | [0010](0010-pdf-rendering.md) | PDF rendering and the container image | accepted, open question |
 | [0011](0011-evidence-packages.md) | Evidence packages, signing and verification | accepted |
 | [0012](0012-audit-log-and-roles.md) | Hash-chained audit log, roles and auditor access | accepted |
+| [0013](0013-outbound-http-and-ssrf.md) | Outbound HTTP for collectors and SSRF protection | accepted |
+| [0014](0014-aws-signing-without-the-sdk.md) | AWS request signing without the AWS SDK | accepted |

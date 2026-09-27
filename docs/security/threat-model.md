@@ -1,12 +1,12 @@
 # Threat model
 
 - Method: STRIDE per element of the data-flow diagram
-- Status: updated at the end of M3
-- Next review: end of M4, and at the end of every milestone after that
+- Status: updated at the end of M4
+- Next review: end of M5, and at the end of every milestone after that
 
 ## Scope and assumptions
 
-This version covers what exists after M3: the Compose stack, development sign-in with roles, the images, the CI and release pipelines, definitions as code, the `file` and `sample` collectors, the redaction pipeline, the evaluator, stored measurements, the worker's scheduler, the read API, the dashboards, evidence packages with their signing key, auditor access and the audit log. Planned components are listed at the end so later milestones start from a known baseline.
+This version covers what exists after M3: the Compose stack, development sign-in with roles, the images, the CI and release pipelines, definitions as code, the `file` and `sample` collectors, the redaction pipeline, the evaluator, stored measurements, the worker's scheduler, the read API, the dashboards, evidence packages with their signing key, auditor access, the audit log, and the HTTP collectors (`rest`, `aws`, `vault`, `jira`, `servicenow`, `github`) with the outbound policy. Planned components are listed at the end so later milestones start from a known baseline.
 
 Assumptions:
 
@@ -22,7 +22,7 @@ Assumptions:
 | Measured results and evidence | Wrong or altered numbers mislead auditors and risk committees |
 | Definitions in `content/` | Whoever changes a threshold or filter changes what the committee sees |
 | Collected records | Can include personal data and, before redaction, cardholder data |
-| Collector credentials (M4) | Read access to cloud accounts, Vault, ticketing and source control |
+| Collector credentials | Read access to cloud accounts, Vault, ticketing and source control |
 | Session tokens | Impersonation of any user, later including admins and auditors |
 | Password hashes (development only) | Offline cracking |
 | Signing key for evidence packages | Forged packages that verify |
@@ -47,7 +47,7 @@ flowchart LR
     ghcr[(GHCR)]
   end
   idp([Identity provider, M5])
-  src([Source systems, M4])
+  src([Source systems])
   user -- "1 HTTPS" --> web
   web -- "2 HTTP" --> api
   api -- "3 TLS" --> pg
@@ -56,7 +56,7 @@ flowchart LR
   files[/Collector files/]
   content -- "9 read" --> worker
   files -- "10 read" --> worker
-  worker -. "5 HTTPS, M4" .-> src
+  worker -- "5 HTTPS, allowlisted hosts only" --> src
   api -. "6 OIDC, M5" .-> idp
   gh -- "7 push, sign" --> ghcr
   ghcr -- "8 pull" --> web
@@ -94,10 +94,10 @@ flowchart LR
 | T8 | Scheduler table | Code execution through stored job data | Rows name a job from a fixed registry and carry string arguments only; nothing is imported or deserialized into objects. APScheduler was removed for this reason (ADR-0007, CVE-2026-31072) | Someone with write access to the table can trigger an allowed job early. The effect is an extra collection run |
 | T9 | `file` collector | Reading files outside its directory | Relative paths only, no `..`, and the resolved path must stay inside `base_dir`; 50 MB limit | Files inside `base_dir` are trusted as data. Their contents go through redaction like any other source |
 | I5 | Collected records | Cardholder data stored | Redaction runs in the pipeline before hashing and storage and cannot be skipped by a plugin: sensitive fields dropped, Luhn-valid 13 to 19 digit runs masked to first six and last four in values, keys, integers and nested data. A test pushes card numbers through every collector path and scans every application table | Numbers with other separators or split across fields. Collector authors must declare such fields sensitive (ADR-0008) |
-| I6 | Collector errors | Secrets or record data in error messages | `CollectorError` and `SecretError` messages are written to be safe to log; scheduled job failures store only the exception type | A third-party plugin that puts data in its messages. The plugin guide says not to; M4 adds a review checklist |
-| I7 | Secret references | Secrets in definitions or the database | Config holds `env://` or `file://` references; the resolver refuses plain values | A plugin config model that accepts a plain string where a reference was meant. Built-in models are reviewed; M4 adds a `SecretRef` type |
-| D3 | Evaluation | Large inputs slow the worker | 50 MB file limit, 1 MB definition limit; evaluation is linear in the number of records | No limit yet on records per batch from future HTTP collectors. M4 adds one in the SDK |
-| E3 | Collectors | A collector with write access to a source | Built-in collectors only read; `required_permissions` documents read-only scopes | Operators can still grant broader credentials than documented. M4's permission docs list the minimum |
+| I6 | Collector errors | Secrets or record data in error messages | `CollectorError` and `SecretError` messages are written to be safe to log; scheduled job failures store only the exception type | A third-party plugin that puts data in its messages. The plugin guide says not to and has a review checklist; the SDK's HTTP errors name host and path only |
+| I7 | Secret references | Secrets in definitions or the database | Config holds `env://` or `file://` references; the resolver refuses plain values | A plugin config model that accepts a plain string where a reference was meant. Built-in models are reviewed and every secret goes through the resolver, which refuses plain values; the review checklist in the plugin guide covers third-party plugins. A dedicated `SecretRef` type is still open |
+| D3 | Evaluation | Large inputs slow the worker | 50 MB file limit, 1 MB definition limit; evaluation is linear in the number of records | HTTP collectors are limited by `max_pages`, `max_records` and a 20 MB response limit (M4). A large `file` batch is still bounded only by the file size limit |
+| E3 | Collectors | A collector with write access to a source | Built-in collectors only read; `required_permissions` documents read-only scopes | Operators can still grant broader credentials than documented. Each collector page lists the minimum read-only permissions, and the HTTP client sends GET and declared read actions only, so extra permissions are not exercised |
 
 ## STRIDE: read API and dashboards (M2)
 
@@ -126,6 +126,18 @@ flowchart LR
 
 Tampered collector inputs (a source system returning wrong data) are outside what the platform can detect. The platform's job is to show which batch, from which source and when, produced each number, so a wrong input can be traced.
 
+## STRIDE: HTTP collectors and outbound calls (M4)
+
+| # | Element | Threat | Mitigation in place | Residual risk |
+| --- | --- | --- | --- | --- |
+| E5 | `rest` and other URL settings | Server-side request forgery: pointing the worker at metadata, loopback or internal services | Operator allowlist (empty by default); HTTPS only unless a host is named for HTTP; metadata names refused; every resolved address checked against loopback, link-local, multicast, reserved, shared and embedded-IPv4 forms; connection pinned to the checked address with TLS verified against the name; no redirects; next-page links must stay on the same host; tests cover each rule (ADR-0013) | Allowlisted internal hosts can be read by anyone who can change content. Content changes go through review, and every collection run is in the audit log |
+| E6 | Collectors | A collector writes to a source system | The client sends GET only, and POST only for read actions a collector declares by name; any other method raises before sending; contract tests assert the methods and actions used | A third-party collector could build its own HTTP client. The plugin checklist forbids it; review is the control |
+| I12 | Collector credentials | Credentials leaked through config, logs, errors or URLs | Secret references resolved at run time; headers never logged; errors name host and path only, never the query string; tests check secrets are absent from URLs and error details; AWS keys never leave the signer | Secrets are in the worker's memory while it runs. A compromised worker can read them |
+| S8 | Source APIs | A spoofed source returns forged data | TLS with certificate and host name verification; plain HTTP only for hosts the operator names | A compromised or malicious source. The batch hash and source name make its data traceable, not correct |
+| D5 | Source APIs | A slow or huge response ties up the worker | Timeouts, three retries with capped backoff, `Retry-After` capped at five minutes, 20 MB response limit, page and record limits per instance | A source that answers slowly within the timeout on every page can hold one worker for pages times timeout. A worker runs due jobs one at a time, so other collectors wait; running more workers spreads them |
+| T14 | Recorded fixtures | Real data committed as test fixtures | Fixtures are synthetic (example.test hosts, documentation account IDs); gitleaks scans history; the plugin checklist asks authors to scrub fixtures | A fixture recorded from a real system and not scrubbed. Review is the control |
+| I13 | Scaffolded plugins | Generated packages copy insecure patterns | The scaffold uses the SDK HTTP client, secret references and a contract test; a test runs its tests, ruff and mypy on the generated package | Authors can change the generated code freely |
+
 ## STRIDE: build and release pipeline
 
 | # | Threat | Mitigation in place | Residual risk |
@@ -140,7 +152,6 @@ Tampered collector inputs (a source system returning wrong data) are outside wha
 
 | Component | Milestone | Main threats to design for |
 | --- | --- | --- |
-| HTTP collectors | M4 | Credential theft, SSRF through the `rest` collector, collectors with write access |
 | OIDC and RBAC | M5 | Token replay, role confusion, business-unit scope bypass |
 | Notifiers | M6 | Data leaking to chat tools, webhook SSRF |
 
@@ -149,6 +160,7 @@ Tampered collector inputs (a source system returning wrong data) are outside wha
 | Date | Milestone | Change |
 | --- | --- | --- |
 | 2026-09-26 | M0 | First draft |
+| 2026-09-27 | M4 | Added HTTP collectors and outbound calls (E5, E6, I12, S8, D5, T14, I13); D3, E3, I6 and I7 updated; diagram flow 5 is live |
 | 2026-09-27 | M3 | Added packages, signing, auditors and the audit log (T12, T13, S6, S7, I10, I11, E4, R3, D4); R2 updated |
 | 2026-09-27 | M2 | Added the read API and dashboards (I8, I9, T10, T11, S5, R2); rate limits now close D1 |
 | 2026-09-27 | M1 | Added definitions, collection, redaction, evaluation and scheduler threats (T5 to T9, I5 to I7, D3, E3) |

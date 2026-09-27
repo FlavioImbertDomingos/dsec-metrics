@@ -10,7 +10,7 @@ Docker Compose is the supported deployment. One `.env` file and `docker compose 
 - Linux x86_64 or arm64 with Docker Engine 25 or later and Compose v2
 - 2 CPUs, 4 GB of memory and 20 GB of disk for the database volume
 - Port 443 (or the port you choose) reachable from users' browsers
-- No outbound internet access is needed at runtime
+- No outbound internet access is needed at runtime, except to the source systems you configure collectors for
 
 ## Files
 
@@ -84,7 +84,7 @@ Restore into an empty volume with `pg_restore`. Evidence retention and purge job
 
 ## Air-gapped hosts
 
-The running stack makes no outbound calls. To install without internet access, on a connected machine run `docker save` for the two images and `postgres:16`, copy the archives, `docker load` them on the target host, set `DSEC_PULL_POLICY=missing`, and start the stack. The full air-gapped guide, including offline signature verification, arrives in M5.
+The running stack makes no outbound calls unless you allowlist collector hosts, and those can be internal. To install without internet access, on a connected machine run `docker save` for the two images and `postgres:16`, copy the archives, `docker load` them on the target host, set `DSEC_PULL_POLICY=missing`, and start the stack. The full air-gapped guide, including offline signature verification, arrives in M5.
 
 ## Building behind a TLS-inspecting proxy
 
@@ -98,4 +98,4 @@ The bundle is passed as a BuildKit secret. It is used only while dependencies do
 
 ## Hardening already applied
 
-Every service runs with a read-only root filesystem, `no-new-privileges`, all Linux capabilities dropped (Postgres keeps the five its entrypoint needs), memory and CPU limits, and log rotation. The API, worker and database sit on an internal network with no route to the internet. Details are in [ADR-0002](../adr/0002-container-base-images.md) and [ADR-0003](../adr/0003-compose-topology.md).
+Every service runs with a read-only root filesystem, `no-new-privileges`, all Linux capabilities dropped (Postgres keeps the five its entrypoint needs), memory and CPU limits, and log rotation. The API, worker and database sit on an internal network with no route out; only the worker also joins the `collectors` network, and collectors can call only the hosts in `DSEC_COLLECTOR_ALLOWED_HOSTS` ([Collectors](../collectors/index.md#outbound-calls)). Details are in [ADR-0002](../adr/0002-container-base-images.md) and [ADR-0003](../adr/0003-compose-topology.md).

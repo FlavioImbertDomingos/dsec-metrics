@@ -4,10 +4,10 @@ Collectors, notifiers, report renderers and secret providers are plugins, discov
 
 | Entry point group | Base class | Built in |
 | --- | --- | --- |
-| `dsec_metrics.collectors` | `dsec_metrics.plugins.sdk.base.Collector` | `file`, `sample` |
+| `dsec_metrics.collectors` | `dsec_metrics.plugins.sdk.base.Collector` | `file`, `sample`, `rest`, `aws`, `vault`, `jira`, `servicenow`, `github` |
 | `dsec_metrics.secret_providers` | `dsec_metrics.plugins.sdk.secrets.SecretProvider` | `env`, `file` |
 | `dsec_metrics.notifiers` | from M6 | |
-| `dsec_metrics.renderers` | from M3 | |
+| `dsec_metrics.renderers` | `dsec_metrics.plugins.sdk.renderer.Renderer` | `pdf`, `html`, `xlsx`, `csv`, `json` (evidence packages use this fixed set, loaded by name) |
 
 ## Writing a collector
 
@@ -74,7 +74,68 @@ Then reference it from a collector instance in `content/collectors/` and run `ds
 - `check_collector_class(cls)` checks that the class declares its name, version, config model, described queries and permissions.
 - `collect_all(collector, query, as_of, **params)` runs a query and checks every batch is labelled with the query and is JSON-serializable.
 
-Timeouts, retries with backoff, pagination and rate-limit handling for HTTP sources arrive in the SDK with the `rest` collector in M4.
+- `FixtureTransport(routes)` replays recorded HTTP responses (see below), and `fixture_policy(*hosts)` is an outbound policy that allows those hosts without touching DNS.
+
+## Starting a new collector
+
+```sh
+dsec-metrics plugin new collector asset_inventory --directory ~/src
+cd ~/src/dsec-metrics-asset-inventory
+pip install -e .
+pytest
+```
+
+The scaffold writes a package that works as it is: `pyproject.toml` with the entry point, a config model, an HTTP collector with one paginated query, two recorded fixture pages, a contract test, and ruff and mypy settings. Installing it is all the platform needs; `dsec-metrics plugin list` shows it, and a collector instance in `content/collectors/` can use it. Replace the sample query with yours, record fixtures from a test account, and remove anything real from them before committing.
+
+## HTTP collectors
+
+Subclass `HttpCollector` and `HttpCollectorConfig` from `dsec_metrics.plugins.sdk.http` for any HTTP source. The base class gives you `self.http`, a client that:
+
+- sends GET only, and POST only for the read actions listed in the class's `read_only_posts` (for APIs such as AWS's that use POST for reads);
+- checks every URL against the operator's outbound policy before connecting, and connects to the checked address ([Collectors](collectors/index.md#outbound-calls), [ADR-0013](adr/0013-outbound-http-and-ssrf.md));
+- applies timeouts, retries with backoff and jitter on connection errors, 429, gateway errors and exhausted rate limits, honours `Retry-After`, refuses redirects, and limits response size;
+- raises `CollectorError` with the host and path only, never the query string or headers.
+
+Pagination helpers on the base class follow `Link: rel="next"` headers (`pages_by_link`), offset and limit parameters (`pages_by_offset`) and cursors (`pages_by_cursor`). Each yields one list of records per page and enforces the instance's `max_pages` and `max_records`. `dig(data, "a.b")` follows a dotted path into parsed JSON.
+
+`HttpCollectorConfig` adds `timeout_seconds`, `max_pages`, `max_records` and `sensitive_fields` to your config model, so operators can set them on any HTTP collector.
+
+If your collector's queries come from its configuration (like `rest`, whose queries are named in YAML), declare `queries = {"*": "..."}` and override the `queries_for(config)` class method to return the names, so `dsec-metrics validate` can check references to them.
+
+### Contract tests
+
+CI never calls live services. Record responses once from a test account, save them under `tests/fixtures/`, and replay them:
+
+```python
+from dsec_metrics.plugins.sdk.testing import FixtureTransport, collect_all, fixture_policy
+
+transport = FixtureTransport(
+    {
+        "GET /items?per_page=100": (
+            FIXTURES / "page-1.json",
+            {"link": '<https://api.example.test/items?page=2>; rel="next"'},
+        ),
+        "GET /items?page=2": FIXTURES / "page-2.json",
+        "POST / Service.ListThings": lambda request: {...},  # a read action; answer by request
+    }
+)
+collector.use_transport(transport, fixture_policy("api.example.test"))
+batches = collect_all(collector, "items", date(2026, 9, 30))
+assert {r.method for r in transport.requests} == {"GET"}
+```
+
+Keys are `"METHOD /path?query"` with query order ignored, plus the action for declared POST reads. A value is a fixture path, bytes, JSON data, `(body, headers)`, `(status, body, headers)`, or a function of the request. A request with no recorded response fails the test.
+
+### Review checklist
+
+Before publishing a collector, check that:
+
+- it sends no write requests, and `required_permissions` and the README list read-only scopes only;
+- every credential is a secret reference, and no message or record contains a secret;
+- fields that can hold personal or authentication data are in `sensitive_fields`;
+- records use the dimension names `business_unit`, `application`, `environment` and `region` where they apply;
+- fixtures are synthetic or scrubbed: no real hostnames, names, keys or card data;
+- contract tests cover every query, including paging and an error response.
 
 ## Writing a secret provider
 
