@@ -1,0 +1,7 @@
+# osv-scanner suppressions. Same rules as .trivyignore.yaml: a reason, an ignoreUntil
+# date, and maintainer approval (ADR-0005).
+#
+# [[IgnoredVulns]]
+# id = "GHSA-xxxx-xxxx-xxxx"
+# ignoreUntil = 2026-12-31
+# reason = "Not reachable because ..."
