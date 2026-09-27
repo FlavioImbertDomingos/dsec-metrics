@@ -18,6 +18,14 @@
   --danger-surface: oklch(0.97 0.02 27);
   --warning-surface: oklch(0.97 0.05 85);
   --warning-foreground: oklch(0.4 0.09 70);
+  --status-green: oklch(0.45 0.12 150);
+  --status-amber: oklch(0.47 0.1 70);
+  --status-red: oklch(0.5 0.19 27);
+  --status-unknown: oklch(0.45 0 0);
+  --status-green-surface: oklch(0.96 0.03 150);
+  --status-amber-surface: oklch(0.96 0.05 85);
+  --status-red-surface: oklch(0.96 0.03 27);
+  --status-unknown-surface: oklch(0.95 0 0);
 }
 
 .dark {
@@ -34,6 +42,14 @@
   --danger-surface: oklch(0.27 0.05 27);
   --warning-surface: oklch(0.3 0.05 85);
   --warning-foreground: oklch(0.88 0.1 85);
+  --status-green: oklch(0.8 0.13 150);
+  --status-amber: oklch(0.85 0.12 85);
+  --status-red: oklch(0.78 0.13 27);
+  --status-unknown: oklch(0.78 0 0);
+  --status-green-surface: oklch(0.28 0.04 150);
+  --status-amber-surface: oklch(0.3 0.05 85);
+  --status-red-surface: oklch(0.29 0.05 27);
+  --status-unknown-surface: oklch(0.27 0 0);
 }
 
 @theme inline {
@@ -50,6 +66,14 @@
   --color-danger-surface: var(--danger-surface);
   --color-warning-surface: var(--warning-surface);
   --color-warning-foreground: var(--warning-foreground);
+  --color-status-green: var(--status-green);
+  --color-status-amber: var(--status-amber);
+  --color-status-red: var(--status-red);
+  --color-status-unknown: var(--status-unknown);
+  --color-status-green-surface: var(--status-green-surface);
+  --color-status-amber-surface: var(--status-amber-surface);
+  --color-status-red-surface: var(--status-red-surface);
+  --color-status-unknown-surface: var(--status-unknown-surface);
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --radius-card: 12px;
 }

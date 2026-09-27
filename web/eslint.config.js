@@ -23,6 +23,8 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       "@typescript-eslint/restrict-template-expressions": ["error", { allowNumber: true }],
+      // Scrollable regions must be keyboard reachable (axe scrollable-region-focusable).
+      "jsx-a11y/no-noninteractive-tabindex": ["error", { roles: ["region"], tags: [] }],
     },
   },
   {

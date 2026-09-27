@@ -1,6 +1,8 @@
 import { cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, vi } from "vitest";
 
+vi.mock("echarts-for-react/esm/core", () => import("@/test/echarts-stub"));
+
 let prefersDark = false;
 
 export function setSystemDark(value: boolean): void {
@@ -9,6 +11,7 @@ export function setSystemDark(value: boolean): void {
 
 beforeEach(() => {
   prefersDark = false;
+  vi.stubGlobal("scrollTo", vi.fn());
   vi.stubGlobal(
     "matchMedia",
     vi.fn((query: string) => ({
@@ -28,5 +31,6 @@ afterEach(() => {
   cleanup();
   localStorage.clear();
   document.documentElement.className = "";
+  window.history.replaceState(null, "", "/");
   vi.unstubAllGlobals();
 });

@@ -9,5 +9,18 @@
   }
   main {
     padding: 0 !important;
+    max-width: none !important;
+  }
+  /* Keep each widget on one page and print links as plain text. */
+  [data-widget] {
+    break-inside: avoid;
+    border-color: #999 !important;
+  }
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+  @page {
+    margin: 12mm;
   }
 }

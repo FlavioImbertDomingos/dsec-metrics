@@ -1,7 +1,7 @@
 import { useMe, useMeta } from "@/auth/session";
 import { AppShell } from "@/components/AppShell";
-import { Home } from "@/pages/Home";
 import { SignIn } from "@/pages/SignIn";
+import { Routes } from "@/Routes";
 
 export function App() {
   const me = useMe();
@@ -37,7 +37,7 @@ export function App() {
 
   return (
     <AppShell me={me.data} meta={meta.data}>
-      <Home me={me.data} />
+      <Routes />
     </AppShell>
   );
 }

@@ -22,11 +22,13 @@ function renderApp(routes: Record<string, Route>) {
 }
 
 describe("App", () => {
-  it("shows sign-in when there is no session, then the home page", async () => {
+  it("shows sign-in when there is no session, then the overview", async () => {
     const user = userEvent.setup();
     renderApp({
       "GET /api/me": () => ({ status: 401, body: { detail: "Not signed in" } }),
       "POST /api/auth/login": () => ({ status: 200, body: ME }),
+      "GET /api/dashboards": () => ({ status: 200, body: [] }),
+      "GET /api/metrics": () => ({ status: 200, body: [] }),
     });
     expect(await screen.findByRole("heading", { name: "Sign in to dsec-metrics" })).toBeDefined();
     expect(screen.getAllByText("Development mode").length).toBeGreaterThan(0);
@@ -35,10 +37,11 @@ describe("App", () => {
     await user.type(screen.getByLabelText("Password"), "a long password");
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
-    expect(
-      await screen.findByRole("heading", { name: "Welcome, Development admin" }),
-    ).toBeDefined();
-    expect(screen.getByText("dev-admin")).toBeDefined();
+    expect(await screen.findByRole("heading", { name: "Overview" })).toBeDefined();
+    expect(screen.getByText("Development admin")).toBeDefined();
+    expect(screen.getByRole("link", { name: "Overview" }).getAttribute("aria-current")).toBe(
+      "page",
+    );
   });
 
   it.each([
@@ -64,6 +67,8 @@ describe("App", () => {
     renderApp({
       "GET /api/me": () => ({ status: 200, body: ME }),
       "POST /api/auth/logout": () => ({ status: 204 }),
+      "GET /api/dashboards": () => ({ status: 200, body: [] }),
+      "GET /api/metrics": () => ({ status: 200, body: [] }),
     });
     await user.click(await screen.findByRole("button", { name: "Sign out" }));
     expect(await screen.findByRole("heading", { name: "Sign in to dsec-metrics" })).toBeDefined();
