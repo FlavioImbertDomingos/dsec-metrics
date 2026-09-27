@@ -112,8 +112,14 @@ def compute(
         return float(len(records)), calc
     if isinstance(ev, SumEval):
         numbers, skipped = _numbers(records, ev.field)
-        calc.update(formula=f"sum({ev.field})", summed=len(numbers), skipped_non_numeric=skipped)
-        return math.fsum(numbers), calc
+        total = math.fsum(numbers)
+        calc.update(
+            formula=f"sum({ev.field})",
+            values_summed=len(numbers),
+            total=total,
+            skipped_non_numeric=skipped,
+        )
+        return total, calc
     if isinstance(ev, RatioEval | PercentageEval):
         scale = ev.scale if isinstance(ev, RatioEval) else 100.0
         num, num_skip = _side(records, ev.numerator, ev.numerator_field)
