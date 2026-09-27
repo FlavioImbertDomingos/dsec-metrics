@@ -71,6 +71,9 @@ class Settings(BaseSettings):
 
     content_dir: Path = Path("content")
 
+    # Ed25519 private key (PKCS#8 PEM) that signs report package manifests.
+    report_signing_key_file: Path | None = None
+
     dev_admin_username: str = "dev-admin"
     dev_admin_password_file: Path | None = None
 

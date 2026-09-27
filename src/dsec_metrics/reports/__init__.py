@@ -1,1 +1,1 @@
-"""Report packages: builder, manifest, signer and verifier. Arrives in M3."""
+"""Report packages: report data, renderers, the signed manifest and the verifier."""

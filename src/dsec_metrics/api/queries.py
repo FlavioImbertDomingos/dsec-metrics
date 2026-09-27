@@ -340,18 +340,29 @@ def batches_by_hash(db: Session, hashes: Sequence[str]) -> dict[str, RecordBatch
 
 
 def latest_source_batches(
-    db: Session, sources: Iterable[tuple[str, str]], *, with_records: bool
+    db: Session,
+    sources: Iterable[tuple[str, str]],
+    *,
+    with_records: bool,
+    as_of_min: date | None = None,
+    as_of_max: date | None = None,
 ) -> dict[tuple[str, str], list[RecordBatchRow]]:
-    """Batches from the newest successful run of each (instance, query)."""
+    """Batches from the newest successful run of each (instance, query), optionally
+    limited to runs whose ``as_of`` falls in a period."""
     out: dict[tuple[str, str], list[RecordBatchRow]] = {}
     for instance_id, query in sorted(set(sources)):
+        conditions = [
+            CollectionRun.instance_id == instance_id,
+            CollectionRun.query == query,
+            CollectionRun.status == "succeeded",
+        ]
+        if as_of_min is not None:
+            conditions.append(CollectionRun.as_of >= as_of_min)
+        if as_of_max is not None:
+            conditions.append(CollectionRun.as_of <= as_of_max)
         run_id = db.scalar(
             select(CollectionRun.id)
-            .where(
-                CollectionRun.instance_id == instance_id,
-                CollectionRun.query == query,
-                CollectionRun.status == "succeeded",
-            )
+            .where(*conditions)
             .order_by(CollectionRun.as_of.desc(), CollectionRun.finished_at.desc())
             .limit(1)
         )
@@ -395,6 +406,7 @@ class RegisterData:
     exceptions: list[r.ExceptionItem] = field(default_factory=list)
     findings: list[r.FindingItem] = field(default_factory=list)
     skipped: int = 0
+    batches: list[RecordBatchRow] = field(default_factory=list)
 
 
 def load_register(
@@ -403,20 +415,23 @@ def load_register(
     register_id: str,
     scope: Scope,
     filters: Mapping[str, str] | None = None,
+    as_of_max: date | None = None,
 ) -> RegisterData:
-    """Read a register from the latest batch of its source. Invalid rows are counted."""
+    """Read a register from the latest batch of its source (at or before ``as_of_max``
+    when given). Invalid rows are counted."""
     register = catalog.registers.get(register_id)
     if register is None:
         return RegisterData(source=None)
     key = (register.source.collector, register.source.query)
-    batches = latest_source_batches(db, [key], with_records=True)[key]
+    batches = latest_source_batches(db, [key], with_records=True, as_of_max=as_of_max)[key]
     if not batches:
         return RegisterData(source=None)
     first = batches[0]
     data = RegisterData(
         source=r.RegisterSource(
             sha256=first.sha256, as_of=first.as_of, collected_at=first.collected_at
-        )
+        ),
+        batches=list(batches),
     )
     as_of = first.as_of
     for batch in batches:

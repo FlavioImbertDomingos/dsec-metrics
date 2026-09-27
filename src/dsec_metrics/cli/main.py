@@ -5,7 +5,7 @@ from __future__ import annotations
 import getpass
 import http.client
 import sys
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
@@ -155,7 +155,7 @@ def bootstrap() -> None:
             password = read_secret_file(settings.dev_admin_password_file)
             with transaction(make_session_factory(engine)) as db:
                 created = ensure_local_user(
-                    db, settings.dev_admin_username, password, "Development admin"
+                    db, settings.dev_admin_username, password, "Development admin", ("admin",)
                 )
             typer.echo(
                 f"dev user {settings.dev_admin_username} {'created' if created else 'up to date'}"
@@ -173,8 +173,18 @@ def dev_create_user(
     password_file: Annotated[
         Path | None, typer.Option(help="Read the password from this file instead of a prompt.")
     ] = None,
+    role: Annotated[
+        list[str] | None,
+        typer.Option(help="Role to give the user; repeat for several. Default: viewer."),
+    ] = None,
 ) -> None:
-    """Create a local account, or reset its password. Development mode only."""
+    """Create a local account, or reset its password and roles. Development mode only."""
+    from dsec_metrics.api.policy import ROLES
+
+    roles = tuple(role or ["viewer"])
+    unknown = sorted(set(roles) - ROLES)
+    if unknown:
+        raise _fail(f"unknown role {', '.join(unknown)}; use {', '.join(sorted(ROLES))}", 2)
     settings = _settings()
     if settings.mode is not Mode.DEVELOPMENT or not settings.local_accounts:
         raise _fail("local accounts are available only in development mode", 2)
@@ -189,7 +199,7 @@ def dev_create_user(
     engine = make_engine(settings)
     try:
         with transaction(make_session_factory(engine)) as db:
-            created = ensure_local_user(db, username, password, display_name or username)
+            created = ensure_local_user(db, username, password, display_name or username, roles)
     except PasswordPolicyError as exc:
         raise _fail(str(exc)) from None
     finally:
@@ -264,7 +274,12 @@ def collect(
     try:
         with transaction(make_session_factory(engine)) as db:
             result = run_collection(
-                db, content.collectors[instance], query, _as_of(as_of), default_secret_resolver()
+                db,
+                content.collectors[instance],
+                query,
+                _as_of(as_of),
+                default_secret_resolver(),
+                actor="cli",
             )
     finally:
         engine.dispose()
@@ -295,7 +310,7 @@ def evaluate(
     engine = make_engine(settings)
     try:
         with transaction(make_session_factory(engine)) as db:
-            current = sync_definitions(db, content)
+            current = sync_definitions(db, content, "cli")
             count = evaluate_all(db, content, current, _as_of(as_of), metric or None)
     finally:
         engine.dispose()
@@ -325,7 +340,7 @@ def demo(
     try:
         for period in month_ends(anchor, months):
             with transaction(make_session_factory(engine)) as db:
-                stats = run_period(db, content, period, secrets)
+                stats = run_period(db, content, period, secrets, actor="cli")
             typer.echo(
                 f"{period}: {stats['runs']} collections ({stats['failed_runs']} failed), "
                 f"{stats['measurements']} new measurements"
@@ -359,3 +374,238 @@ def status(as_of: AsOfOpt = None, content_dir: ContentOpt = None) -> None:
             f"{line.metric_id:<8} {STATUS_MARK[line.status]}{line.status:<6} {value:>10}  "
             f"{line.as_of.isoformat() if line.as_of else '-':<10}  {line.name}"
         )
+
+
+# Reports, verification and the audit log (M3).
+
+report_app = typer.Typer(help="Build evidence packages.", no_args_is_help=True)
+keys_app = typer.Typer(help="Signing keys for evidence packages.", no_args_is_help=True)
+audit_app = typer.Typer(help="The hash-chained audit log.", no_args_is_help=True)
+users_app = typer.Typer(help="Users and auditor grants.", no_args_is_help=True)
+app.add_typer(report_app, name="report")
+app.add_typer(keys_app, name="keys")
+app.add_typer(audit_app, name="audit")
+app.add_typer(users_app, name="users")
+
+
+@keys_app.command("generate")
+def keys_generate(
+    private_key: Annotated[Path, typer.Option(help="Where to write the private key (PEM).")],
+    public_key: Annotated[Path, typer.Option(help="Where to write the public key (PEM).")],
+) -> None:
+    """Create an Ed25519 key pair for signing packages. Refuses to overwrite a file that
+    has contents (an empty placeholder is replaced)."""
+    import os
+
+    from dsec_metrics.reports.signing import generate, load_private
+
+    for path in (private_key, public_key):
+        if path.exists() and path.stat().st_size > 0:
+            raise _fail(f"{path} already exists")
+    private_pem, public_pem = generate()
+    fd = os.open(private_key, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "wb") as fh:
+        fh.write(private_pem)
+    public_key.write_bytes(public_pem)
+    typer.echo(f"fingerprint {load_private(private_key).fingerprint}")
+
+
+@report_app.command("build")
+def report_build(
+    report_type: Annotated[
+        str,
+        typer.Argument(
+            help="control, framework, reproducibility, risk_committee, management or exceptions"
+        ),
+    ],
+    output: Annotated[Path, typer.Option("--output", "-o", help="Where to write the ZIP.")],
+    period_start: Annotated[str, typer.Option(help="First day, YYYY-MM-DD.")],
+    period_end: Annotated[str, typer.Option(help="Last day, YYYY-MM-DD.")],
+    control: Annotated[str | None, typer.Option(help="Control id (control reports).")] = None,
+    framework: Annotated[str | None, typer.Option(help="Framework pack id.")] = None,
+    requirement: Annotated[
+        list[str] | None, typer.Option(help="Requirement id or prefix; repeat for several.")
+    ] = None,
+    metric: Annotated[str | None, typer.Option(help="Metric id (reproducibility).")] = None,
+    prepared_for: Annotated[str, typer.Option(help="The 'Prepared for' line.")] = "",
+) -> None:
+    """Build, sign and store a package, and write a copy to a file."""
+    from pydantic import ValidationError
+
+    from dsec_metrics.reports.builder import generate
+    from dsec_metrics.reports.data import ReportError, ReportRequest
+    from dsec_metrics.reports.signing import SigningKeyError, load_private
+
+    settings = _settings()
+    if settings.report_signing_key_file is None:
+        raise _fail("set DSEC_REPORT_SIGNING_KEY_FILE to the signing key", 2)
+    try:
+        key = load_private(settings.report_signing_key_file)
+        request = ReportRequest(
+            report_type=report_type,  # type: ignore[arg-type]
+            period_start=date.fromisoformat(period_start),
+            period_end=date.fromisoformat(period_end),
+            control_id=control,
+            framework=framework,
+            requirements=requirement or [],
+            metric_id=metric,
+            prepared_for=prepared_for,
+        )
+    except (SigningKeyError, ValidationError, ValueError) as exc:
+        raise _fail(
+            str(exc).splitlines()[0] if isinstance(exc, ValidationError) else str(exc), 2
+        ) from None
+    engine = make_engine(settings)
+    try:
+        with transaction(make_session_factory(engine)) as db:
+            generated = generate(db, request, key, "cli")
+            content = generated.built.content
+            package_id = generated.row.id
+    except ReportError as exc:
+        raise _fail(str(exc)) from None
+    finally:
+        engine.dispose()
+    output.write_bytes(content)
+    typer.echo(f"{output}: package {package_id}, {len(content)} bytes, key {key.fingerprint}")
+
+
+@app.command()
+def verify(
+    package: Annotated[Path, typer.Argument(help="The package ZIP.")],
+    public_key: Annotated[
+        Path | None, typer.Option(help="Public key (PEM) the package must be signed with.")
+    ] = None,
+    fingerprint: Annotated[
+        str | None, typer.Option(help="SHA-256 fingerprint the signing key must have.")
+    ] = None,
+) -> None:
+    """Check a package's signature and every file hash. Exits 1 on any mismatch.
+
+    Needs no database and no network."""
+    from dsec_metrics.reports.verify import verify_package
+
+    key = public_key.read_bytes() if public_key else None
+    result = verify_package(package, public_key=key, expected_fingerprint=fingerprint)
+    for problem in result.problems:
+        typer.echo(f"FAIL {problem}")
+    if not result.ok:
+        raise typer.Exit(1)
+    pinned = (
+        "pinned"
+        if result.pinned
+        else "embedded in the package; compare it with the one you were given"
+    )
+    typer.echo(f"OK {result.files_checked} files match the signed manifest")
+    typer.echo(f"signing key {result.fingerprint} ({pinned})")
+
+
+@app.command()
+def reproduce(
+    package: Annotated[Path, typer.Argument(help="A metric reproducibility package.")],
+    public_key: Annotated[Path | None, typer.Option(help="Public key (PEM) to pin.")] = None,
+) -> None:
+    """Verify a reproducibility package, then recompute its number from its own evidence."""
+    from dsec_metrics.reports.builder import reproduce as run
+
+    result = run(package.read_bytes(), public_key.read_bytes() if public_key else None)
+    for problem in result.problems:
+        typer.echo(f"FAIL {problem}")
+    if not result.ok:
+        raise typer.Exit(1)
+    typer.echo(f"OK recomputed {result.recomputed} ({result.recomputed_status}), as reported")
+
+
+@audit_app.command("verify")
+def audit_verify() -> None:
+    """Recompute the audit chain and report the first broken link. Exits 1 if broken."""
+    from dsec_metrics import audit
+
+    settings = _settings()
+    engine = make_engine(settings)
+    try:
+        with make_session_factory(engine)() as db:
+            result = audit.verify_chain(db)
+    finally:
+        engine.dispose()
+    if not result.ok:
+        typer.echo(f"BROKEN at entry {result.broken_at}: {result.reason}")
+        typer.echo(f"{result.checked} entries before it are intact")
+        raise typer.Exit(1)
+    typer.echo(f"OK {result.checked} entries, head {result.head}")
+
+
+@users_app.command("grant-auditor")
+def grant_auditor(
+    username: str,
+    framework: Annotated[list[str], typer.Option(help="Framework pack id; repeat for several.")],
+    period_start: Annotated[str, typer.Option(help="First day the auditor may see.")],
+    period_end: Annotated[str, typer.Option(help="Last day the auditor may see.")],
+    days: Annotated[int, typer.Option(help="Days until the grant expires.", min=1, max=365)] = 30,
+    password_file: Annotated[
+        Path | None,
+        typer.Option(
+            help="Create the local account with the password in this file ('-' for stdin)."
+        ),
+    ] = None,
+) -> None:
+    """Give a user the auditor role and a time-boxed grant. Local accounts are
+    development only; with OIDC (M5) the role comes from the identity provider."""
+    from dsec_metrics import audit
+    from dsec_metrics.auth.users import find_user
+    from dsec_metrics.db.models import AuditorGrant
+
+    settings = _settings()
+    start, end = date.fromisoformat(period_start), date.fromisoformat(period_end)
+    if end < start:
+        raise _fail("period_end is before period_start", 2)
+    engine = make_engine(settings)
+    try:
+        with transaction(make_session_factory(engine)) as db:
+            user = find_user(db, username)
+            if user is None:
+                if password_file is None:
+                    raise _fail(f"no user {username}; pass --password-file to create one", 2)
+                if settings.mode is not Mode.DEVELOPMENT or not settings.local_accounts:
+                    raise _fail("local accounts are available only in development mode", 2)
+                secret = (
+                    sys.stdin.read().strip()
+                    if str(password_file) == "-"
+                    else read_secret_file(password_file)
+                )
+                ensure_local_user(db, username, secret, username, ("auditor",))
+                user = find_user(db, username)
+            if user is None:  # pragma: no cover (just created)
+                raise _fail("could not create the user")
+            user.roles = sorted({*(user.roles or []), "auditor"})
+            now = datetime.now(UTC)
+            grant = AuditorGrant(
+                user_id=user.id,
+                frameworks=sorted(set(framework)),
+                period_start=start,
+                period_end=end,
+                expires_at=now + timedelta(days=days),
+                created_by="cli",
+            )
+            db.add(grant)
+            db.flush()
+            audit.record(
+                db,
+                "cli",
+                "auditor.grant",
+                f"user:{username}",
+                {
+                    "grant_id": str(grant.id),
+                    "frameworks": grant.frameworks,
+                    "period": [start.isoformat(), end.isoformat()],
+                    "expires_at": grant.expires_at.isoformat(),
+                },
+            )
+            expires = grant.expires_at
+    except PasswordPolicyError as exc:
+        raise _fail(str(exc)) from None
+    finally:
+        engine.dispose()
+    typer.echo(
+        f"{username} may see {', '.join(sorted(set(framework)))} for {start} to {end}"
+        f" until {expires:%Y-%m-%d %H:%M} UTC"
+    )

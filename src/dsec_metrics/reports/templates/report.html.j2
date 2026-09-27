@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ data.title }}</title>
+<style>
+  @page {
+    size: A4;
+    margin: 20mm 16mm 20mm 16mm;
+    @bottom-left { content: "{{ product }} · {{ data.title | replace('"', "'") }}"; font-family: "DejaVu Sans", sans-serif; font-size: 7.5pt; color: #666; }
+    @bottom-right { content: "Page " counter(page) " of " counter(pages); font-family: "DejaVu Sans", sans-serif; font-size: 7.5pt; color: #666; }
+  }
+  @page cover { @bottom-left { content: none; } @bottom-right { content: none; } }
+  body { font-family: "DejaVu Sans", "Inter", sans-serif; font-size: 9pt; color: #1a1a1a; line-height: 1.4; }
+  h1 { font-size: 20pt; margin: 0 0 4mm; }
+  h2 { font-size: 13pt; margin: 8mm 0 3mm; border-bottom: 0.5pt solid #bbb; padding-bottom: 1mm; }
+  h3 { font-size: 10.5pt; margin: 5mm 0 2mm; }
+  .cover { page: cover; page-break-after: always; padding-top: 50mm; }
+  .cover dl { display: grid; grid-template-columns: 45mm 1fr; row-gap: 2mm; margin-top: 12mm; }
+  .cover dt { color: #555; }
+  .muted { color: #555; }
+  .mono { font-family: "DejaVu Sans Mono", monospace; font-size: 7.5pt; word-break: break-all; }
+  table { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm; }
+  th, td { text-align: left; vertical-align: top; padding: 1.2mm 1.5mm; border-bottom: 0.4pt solid #ddd; }
+  th { font-size: 8pt; color: #444; font-weight: 600; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .status { font-weight: 600; white-space: nowrap; }
+  .green { color: #1a7f37; } .amber { color: #9a6700; } .red { color: #cf222e; } .unknown { color: #57606a; }
+  .toc a { color: inherit; text-decoration: none; }
+  .toc a::after { content: leader(".") target-counter(attr(href), page); }
+  .toc ol { list-style: none; padding: 0; }
+  .toc li { margin: 1.5mm 0; }
+  section.control { page-break-before: always; }
+  pre { font-family: "DejaVu Sans Mono", monospace; font-size: 7pt; white-space: pre-wrap; word-break: break-all; background: #f5f5f5; padding: 2mm; }
+  .summary { display: flex; gap: 6mm; }
+  .summary div { border: 0.5pt solid #ccc; border-radius: 2mm; padding: 2mm 4mm; }
+  .summary strong { font-size: 14pt; display: block; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <h1>{{ data.title }}</h1>
+  <p class="muted">{{ type_title }}</p>
+  <dl>
+    {% if data.request.prepared_for %}<dt>Prepared for</dt><dd>{{ data.request.prepared_for }}</dd>{% endif %}
+    <dt>Period</dt><dd>{{ data.request.period_start | date }} to {{ data.request.period_end | date }}</dd>
+    <dt>Generated</dt><dd>{{ data.generated_at | datetime }} by {{ data.generated_by }}</dd>
+    <dt>Frameworks</dt><dd>{{ data.frameworks | join(", ") or "None" }}</dd>
+    <dt>Signing key fingerprint</dt><dd class="mono">{{ data.key_fingerprint }}</dd>
+  </dl>
+  <p class="muted" style="margin-top: 15mm">
+    This report is part of a signed evidence package. Check it with
+    <span class="mono">dsec-metrics verify package.zip</span> and compare the fingerprint above
+    with the one you were given.
+  </p>
+</section>
+
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#scope">Scope and method</a></li>
+    <li><a href="#summary">Summary</a></li>
+    {% for c in data.controls %}<li><a href="#control-{{ c.control.id }}">{{ c.control.id }} {{ c.control.name }}</a></li>{% endfor %}
+    {% if data.metrics %}<li><a href="#metrics">Indicators</a></li>{% endif %}
+    {% if data.reproduction %}<li><a href="#reproduction">Reproducing the value</a></li>{% endif %}
+    {% if data.exceptions %}<li><a href="#exceptions">Exceptions register</a></li>{% endif %}
+    <li><a href="#custody">Chain of custody</a></li>
+    <li><a href="#definitions">Appendix: metric definitions</a></li>
+  </ol>
+</nav>
+
+<section id="scope">
+  <h2>Scope and method</h2>
+  <p>{{ type_title }} for {{ data.request.period_start | date }} to {{ data.request.period_end | date }}.
+  {% for k, v in data.request.scope().items() %}{{ k | human }}: {{ v if v is string else v | join(", ") }}. {% endfor %}</p>
+  <p>{{ data.method }}</p>
+  <p>Every value names the measurement it came from. Each measurement records the definition version and the
+  SHA-256 of the source batches it was computed from; those batches are in the package under
+  <span class="mono">evidence/batches/</span>, redacted exactly as stored.</p>
+</section>
+
+<section id="summary">
+  <h2>Summary</h2>
+  <div class="summary">
+    {% for status, n in data.summary.items() %}<div><strong class="{{ status }}">{{ n }}</strong>{{ status | status }}</div>{% endfor %}
+  </div>
+  <p class="muted">Counts are of {{ "controls" if data.controls else "indicators" }} by status. Unknown means no data in the period, or data older than twice the metric's frequency.</p>
+</section>
+
+{% macro metric_table(lines) %}
+<table>
+  <thead><tr><th>Indicator</th><th>Status</th><th>Value</th><th>As of</th><th>Change</th><th>Target</th><th>Owner</th><th>Measurement</th></tr></thead>
+  <tbody>
+  {% for m in lines %}
+    <tr>
+      <td>{{ m.metric.id }} {{ m.metric.name }}</td>
+      <td class="status {{ m.status }}">{{ m.status | status }}</td>
+      <td class="num">{{ m.point.value | value(m.metric.unit) if m.point else "No data" }}</td>
+      <td class="num">{{ m.point.as_of | date if m.point else "" }}</td>
+      <td class="num">{{ m.point.delta_previous | delta if m.point else "" }}</td>
+      <td class="num">{{ m.metric.target | value(m.metric.unit) }}</td>
+      <td>{{ m.metric.owner }}</td>
+      <td class="mono">{{ m.point.measurement_id if m.point else "" }} v{{ m.version }}</td>
+    </tr>
+    {% if m.status == "red" %}<tr><td colspan="8" class="red">Action: {{ m.metric.action_when_red }}</td></tr>{% endif %}
+  {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}
+
+{% for c in data.controls %}
+<section class="control" id="control-{{ c.control.id }}">
+  <h2>{{ c.control.id }} {{ c.control.name }}</h2>
+  <p><span class="status {{ c.status }}">{{ c.status | status }}</span> · Owner {{ c.control.owner }}</p>
+  {% if c.control.description %}<p>{{ c.control.description }}</p>{% endif %}
+  <h3>Requirements</h3>
+  <table><tbody>
+  {% for q in c.requirements %}<tr><td>{{ q.framework_name }}</td><td class="mono">{{ q.ref.split(":")[1] }}</td><td>{{ q.short_title or "" }}</td></tr>{% endfor %}
+  </tbody></table>
+  <h3>Metrics</h3>
+  {% if c.metrics %}{{ metric_table(c.metrics) }}{% else %}<p class="muted">No metrics measure this control.</p>{% endif %}
+  <h3>Evidence</h3>
+  {% if c.evidence %}
+  <table><thead><tr><th>Source</th><th>As of</th><th>Records</th><th>File</th></tr></thead><tbody>
+  {% for b in c.evidence %}<tr><td>{{ b.instance_id }} / {{ b.query }}</td><td class="num">{{ b.as_of | date }}</td><td class="num">{{ b.record_count }}</td><td class="mono">evidence/batches/{{ b.sha256 }}.json</td></tr>{% endfor %}
+  </tbody></table>
+  {% else %}<p class="muted">No evidence was collected for this control in the period.</p>{% endif %}
+  <h3>Exceptions and findings</h3>
+  {% if c.exceptions or c.findings %}
+  <table><thead><tr><th>Item</th><th>Status</th><th>Detail</th><th>Dates</th></tr></thead><tbody>
+  {% for e in c.exceptions %}<tr><td>{{ e.exception_id }}</td><td>{{ e.status }}</td><td>{{ e.reason or "" }} (risk {{ e.risk_rating or "not rated" }}, root cause {{ e.root_cause or "not recorded" }})</td><td class="num">approved {{ e.approved_at | date }}, expires {{ e.expires_at | date }}</td></tr>{% endfor %}
+  {% for f in c.findings %}<tr><td>{{ f.finding_id }}</td><td>{{ f.status }}</td><td>{{ f.severity }} from {{ f.source or "unknown source" }}{{ ", repeat" if f.repeat else "" }}</td><td class="num">due {{ f.due_date | date }}{% if f.days_past_due %}, {{ f.days_past_due }} days past due{% endif %}</td></tr>{% endfor %}
+  </tbody></table>
+  {% else %}<p class="muted">None recorded for this control.</p>{% endif %}
+</section>
+{% endfor %}
+
+{% if data.metrics %}
+<section id="metrics">
+  <h2>Indicators</h2>
+  {{ metric_table(data.metrics) }}
+  {% if data.request.report_type.value == "management" %}
+  {% for m in data.metrics if m.history|length > 1 %}
+  <h3>{{ m.metric.id }} {{ m.metric.name }}</h3>
+  <table><thead><tr><th>As of</th><th>Value</th><th>Status</th><th>Change from baseline</th><th>Distance to target</th></tr></thead><tbody>
+  {% for p in m.history %}<tr><td class="num">{{ p.as_of | date }}</td><td class="num">{{ p.value | value(m.metric.unit) }}</td><td class="status {{ p.status }}">{{ p.status | status }}</td><td class="num">{{ p.delta_baseline | delta }}</td><td class="num">{{ p.distance_to_target | delta }}</td></tr>{% endfor %}
+  </tbody></table>
+  {% endfor %}
+  {% endif %}
+</section>
+{% endif %}
+
+{% if data.reproduction %}
+<section id="reproduction">
+  <h2>Reproducing the value</h2>
+  <p>Measurement {{ data.reproduction.measurement_id }} as of {{ data.reproduction.as_of | date }}{% if data.reproduction.dimensions %} for {{ data.reproduction.dimensions.values() | join(", ") }}{% endif %}.</p>
+  <ol>
+    <li>Take the definition in <span class="mono">evidence/definitions/</span>. Its SHA-256 over canonical JSON is <span class="mono">{{ data.metrics[0].sha256 }}</span>.</li>
+    <li>Take the input batches listed below from <span class="mono">evidence/batches/</span> and check each file's hash against the manifest.</li>
+    <li>Apply the filters and the evaluation in the definition to the records, as of the date above.</li>
+    <li>Or run <span class="mono">dsec-metrics reproduce package.zip</span>, which does these steps with the same evaluator and compares the result.</li>
+  </ol>
+  <h3>Calculation record</h3>
+  <pre>{{ data.reproduction.calculation | tojson(indent=2) }}</pre>
+</section>
+{% endif %}
+
+{% if data.exceptions %}
+<section id="exceptions">
+  <h2>Exceptions register</h2>
+  <p class="muted">From batch <span class="mono">{{ data.register_source.sha256 }}</span>, collected {{ data.register_source.collected_at | datetime }}. Ages counted to {{ data.register_source.as_of | date }}.</p>
+  <table><thead><tr><th>Exception</th><th>Control</th><th>Status</th><th>Risk</th><th>Age</th><th>Expiry</th><th>Root cause</th><th>Owner</th></tr></thead><tbody>
+  {% for e in data.exceptions %}<tr><td>{{ e.exception_id }}</td><td>{{ e.control_id or "" }}</td><td>{{ e.status }}</td><td>{{ e.risk_rating or "" }}</td><td class="num">{{ e.age_days if e.age_days is not none else "" }} days</td><td class="num">{{ e.expires_at | date }}{% if e.days_to_expiry is not none and e.days_to_expiry < 0 %} (expired){% endif %}</td><td>{{ e.root_cause or "" }}</td><td>{{ e.owner or "" }}</td></tr>{% endfor %}
+  </tbody></table>
+</section>
+{% endif %}
+
+<section id="custody">
+  <h2>Chain of custody</h2>
+  <p>Every source batch used in this report, as collected and redacted. The SHA-256 is over the canonical JSON of the records; the package manifest also lists the SHA-256 of each evidence file.</p>
+  <table><thead><tr><th>Source</th><th>Collector</th><th>As of</th><th>Collected</th><th>Records</th><th>Redaction</th><th>SHA-256</th></tr></thead><tbody>
+  {% for b in batches %}<tr><td>{{ b.instance_id }} / {{ b.query }}</td><td>{{ b.collector }} {{ b.collector_version }}</td><td class="num">{{ b.as_of | date }}</td><td class="num">{{ b.collected_at | datetime }}</td><td class="num">{{ b.record_count }}</td><td>{{ b.redaction.pans_masked or 0 }} masked{% if b.redaction.fields_dropped %}, dropped {{ b.redaction.fields_dropped.keys() | join(", ") }}{% endif %}</td><td class="mono">{{ b.sha256 }}</td></tr>{% endfor %}
+  </tbody></table>
+  <p>Generated {{ data.generated_at | datetime }} by {{ data.generated_by }} with {{ product }} {{ version }}. Signed with the Ed25519 key whose fingerprint is <span class="mono">{{ data.key_fingerprint }}</span>.</p>
+</section>
+
+<section id="definitions">
+  <h2>Appendix: metric definitions</h2>
+  {% for mid, body in data.definitions | dictsort %}
+  <h3>{{ mid }}</h3>
+  <pre>{{ body | tojson(indent=2) }}</pre>
+  {% else %}<p class="muted">No metric definitions were used.</p>{% endfor %}
+</section>
+</body>
+</html>
