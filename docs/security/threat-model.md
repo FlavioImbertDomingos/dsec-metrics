@@ -1,12 +1,12 @@
 # Threat model
 
 - Method: STRIDE per element of the data-flow diagram
-- Status: updated at the end of M1
-- Next review: end of M2, and at the end of every milestone after that
+- Status: updated at the end of M2
+- Next review: end of M3, and at the end of every milestone after that
 
 ## Scope and assumptions
 
-This version covers what exists after M1: the Compose stack, development sign-in, the images, the CI and release pipelines, definitions as code, the `file` and `sample` collectors, the redaction pipeline, the evaluator, stored measurements and the worker's scheduler. Planned components are listed at the end so later milestones start from a known baseline.
+This version covers what exists after M2: the Compose stack, development sign-in, the images, the CI and release pipelines, definitions as code, the `file` and `sample` collectors, the redaction pipeline, the evaluator, stored measurements, the worker's scheduler, the read API and the dashboards. Planned components are listed at the end so later milestones start from a known baseline.
 
 Assumptions:
 
@@ -79,7 +79,7 @@ flowchart LR
 | I2 | Secrets | Leaking the database password | Docker secrets as files, not environment variables; `SecretStr`; the password never appears in URL strings or logs | Secret files are world-readable inside a directory only the owner can open (containers run as different users). Production guidance in the deployment doc |
 | I3 | OpenAPI docs | Mapping the API surface | Served only in development mode | None known |
 | I4 | Dev CA | Trusting it lets someone intercept other sites | Name constraints, one-year lifetime, private key deleted after issuing two certificates | None known |
-| D1 | API | Resource exhaustion | 1 MB request body limit at the proxy; memory and CPU limits per container; database connection pool limits | No general request rate limit yet. M2 adds rate limits on every route, as the brief requires |
+| D1 | API | Resource exhaustion | Rate limits on every path per client address and per session, in middleware (M2); 1 MB body limit at the proxy and in the API, 411 for bodies without a length; paged batch records (at most 200 a page); memory and CPU limits per container; database connection pool limits | Many addresses together can still load the API; the limits are per address. Counters fail open if their table is unreachable, logged as a warning |
 | D2 | Sign-in | Throttle used to lock out a real user | Lockout is time-limited (15 minutes) and per username | An attacker can keep one known username locked. Acceptable for development accounts; OIDC replaces this in M5 |
 | E1 | Containers | Container escape or privilege escalation | Non-root, read-only root filesystem, all capabilities dropped (Postgres keeps the five its entrypoint needs), `no-new-privileges`, no shell in our images | Kernel vulnerabilities are out of scope |
 | E2 | Authorization | A new route ships without a check | One policy module; CI fails if a route has no policy or lacks allowed and denied tests | None known |
@@ -99,6 +99,17 @@ flowchart LR
 | D3 | Evaluation | Large inputs slow the worker | 50 MB file limit, 1 MB definition limit; evaluation is linear in the number of records | No limit yet on records per batch from future HTTP collectors. M4 adds one in the SDK |
 | E3 | Collectors | A collector with write access to a source | Built-in collectors only read; `required_permissions` documents read-only scopes | Operators can still grant broader credentials than documented. M4's permission docs list the minimum |
 
+## STRIDE: read API and dashboards (M2)
+
+| # | Element | Threat | Mitigation in place | Residual risk |
+| --- | --- | --- | --- | --- |
+| I8 | Read API | A user sees business units they should not | Every query takes a scope; the filter runs on slices, batches and register records | Until M5 the scope allows every business unit for every signed-in user. Development mode only, so no production exposure yet |
+| I9 | Batch viewer | Record contents shown to users | Records are shown exactly as stored, after redaction; card numbers are masked and sensitive fields dropped before storage | Redacted records can still hold names, hostnames or ticket text from source systems. M5 adds a role check on batch records |
+| T10 | Dashboards | A filtered view shows unfiltered numbers and misleads a committee | A filter is honoured only when a stored slice matches exactly; otherwise the response says it was ignored and the UI shows a note | None known |
+| T11 | Front end | Script injection through record contents or definitions | Values are rendered as text by React; no HTML from the API is injected; charts draw on canvas with canvas tooltips; CSP blocks inline scripts and styles, and the e2e suite fails on any console error | None known |
+| S5 | Rate limit keys | Evading per-session limits with made-up cookies | Every request also counts against its address; session keys are hashes of the cookie | Address-level limits only for callers that rotate addresses |
+| R2 | Reads | No record of who looked at what | Access logs from the proxy; sign-in events | Per-read audit events arrive with the audit log in M3, starting with auditor downloads |
+
 Tampered collector inputs (a source system returning wrong data) are outside what the platform can detect. The platform's job is to show which batch, from which source and when, produced each number, so a wrong input can be traced.
 
 ## STRIDE: build and release pipeline
@@ -116,7 +127,6 @@ Tampered collector inputs (a source system returning wrong data) are outside wha
 | Component | Milestone | Main threats to design for |
 | --- | --- | --- |
 | HTTP collectors | M4 | Credential theft, SSRF through the `rest` collector, collectors with write access |
-| Dashboards and read API | M2 | Scope bypass between business units, `unknown` shown as green, scraping without rate limits |
 | Evidence packages and signing key | M3 | Key theft, forged or altered packages, auditor link sharing |
 | Audit log | M3 | Deletion or rewriting of history |
 | OIDC and RBAC | M5 | Token replay, role confusion, business-unit scope bypass |
@@ -127,4 +137,5 @@ Tampered collector inputs (a source system returning wrong data) are outside wha
 | Date | Milestone | Change |
 | --- | --- | --- |
 | 2026-09-26 | M0 | First draft |
+| 2026-09-27 | M2 | Added the read API and dashboards (I8, I9, T10, T11, S5, R2); rate limits now close D1 |
 | 2026-09-27 | M1 | Added definitions, collection, redaction, evaluation and scheduler threats (T5 to T9, I5 to I7, D3, E3) |

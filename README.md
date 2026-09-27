@@ -1,10 +1,10 @@
 # dsec-metrics
 
-![dsec-metrics placeholder home page in light mode](docs/assets/screenshot.png)
+![The risk committee dashboard in light mode, showing key risk indicators with status, owner and change, a trend chart and status by business unit](docs/assets/screenshot.png)
 
 dsec-metrics is a self-hosted compliance metrics and audit evidence platform for data security teams. It turns agreed metric and control definitions, kept as YAML in version control, into measured results, shows them on one dashboard per audience, and builds evidence packages that an auditor can verify on their own: every number links back to the definition version, the query and the hashed source data behind it, and every package carries a signed SHA-256 manifest. It runs entirely inside your network, behind your identity provider, with read-only collectors and no telemetry.
 
-> Status: pre-alpha. M0 (foundations) and M1 (definitions and evaluator) are in place: the Compose stack, development sign-in, CI with every security gate, definitions as code, the evaluator, redaction and the `file` and `sample` collectors. Dashboards and reports arrive in M2 and M3. See [CLAUDE.md](CLAUDE.md) for the full brief and milestones.
+> Status: pre-alpha. M0 to M2 are in place: the Compose stack, development sign-in, CI with every security gate, definitions as code, the evaluator, redaction, the `file` and `sample` collectors, and the three audience dashboards with drill-down to source records. Audit reports arrive in M3. See [CLAUDE.md](CLAUDE.md) for the full brief and milestones.
 
 ## Quick start
 
@@ -42,6 +42,7 @@ Development sign-in exists only in development mode. The app refuses to start in
 - [Architecture](docs/architecture.md)
 - [Definition language](docs/definitions.md)
 - [Plugin SDK](docs/plugins.md)
+- [Dashboards and the read API](docs/dashboards.md)
 - [Architecture decision records](docs/adr/index.md)
 - [Threat model](docs/security/threat-model.md)
 - [Deploying with Docker Compose](docs/deployment/compose.md)

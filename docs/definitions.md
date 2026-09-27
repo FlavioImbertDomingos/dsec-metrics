@@ -159,6 +159,17 @@ schedule: "5 2 * * *"       # five-field cron in UTC, or omit for manual runs
 
 `config` is validated by the plugin's own model. Secrets are references such as `env://GRC_TOKEN` or `file:///run/secrets/grc-token`, never values. Schedules accept numbers, `*`, ranges, steps and lists; names such as `MON` are not supported.
 
+## Registers
+
+The exceptions and findings registers come from collector data. A register names the source; the GRC tool stays the system of record.
+
+```yaml
+id: exceptions              # exceptions or findings
+source: {collector: grc, query: open_exceptions}
+```
+
+Records in an exceptions register are read with these fields: `exception_id` and `status` (required), `control_id`, `reason`, `compensating_controls`, `risk_rating`, `owner`, `root_cause`, `approved_at`, `expires_at` (dates as `YYYY-MM-DD`), and the four dimensions. Findings use `finding_id`, `severity` and `status` (required), `source`, `control_id`, `owner`, `opened`, `due_date`, `repeat`, and the dimensions. Records without the required fields are skipped and counted. Ages are counted to the batch's `as_of` date, so the register reads the same whenever it is opened.
+
 ## Versioning
 
 On each sync, a definition's SHA-256 is computed over canonical JSON of the validated model. A new hash becomes a new version; the old version stays, and so do the measurements made with it. Reformatting a file without changing its meaning does not create a version.

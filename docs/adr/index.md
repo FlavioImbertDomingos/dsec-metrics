@@ -12,3 +12,4 @@ Each significant decision is recorded here with its context, the decision and it
 | [0006](0006-definition-language-and-versioning.md) | Definition language and versioning | accepted |
 | [0007](0007-worker-scheduler.md) | Worker scheduler without APScheduler | accepted, pending confirmation |
 | [0008](0008-redaction-pipeline.md) | Redaction pipeline | accepted |
+| [0009](0009-read-api-and-dashboards.md) | Read API, dashboard aggregation and rate limits | accepted |
