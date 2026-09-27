@@ -1,0 +1,4 @@
+# gitleaks configuration: the default rules. Any allowlist entry added here needs a
+# reason and maintainer approval (ADR-0005).
+[extend]
+useDefault = true
