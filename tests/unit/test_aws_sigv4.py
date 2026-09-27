@@ -87,3 +87,14 @@ def test_signature_changes_with_every_input() -> None:
     assert first == sig()
     assert len({first, sig(body=b"{ }"), sig(region="eu-west-2"), sig(service="acm")}) == 4
     assert sig(target="B") != first
+
+
+def test_host_is_signed_as_http_client_sends_it() -> None:
+    vanilla = signature(
+        sign("GET", "https://example.amazonaws.com/", {}, b"", SUITE, "us-east-1", "service", WHEN)
+    )
+    for url in ("https://Example.AmazonAWS.com:443/", "https://example.amazonaws.com./"):
+        out = sign("GET", url, {}, b"", SUITE, "us-east-1", "service", WHEN)
+        assert signature(out) == vanilla
+    other_port = sign("GET", "http://localstack.test:4566/", {}, b"", SUITE, "r", "s", WHEN)
+    assert other_port["Authorization"] != vanilla

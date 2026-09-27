@@ -163,3 +163,25 @@ def test_system_resolver(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(socket, "getaddrinfo", fails)
     with pytest.raises(BlockedURL, match="cannot resolve"):
         system_resolver("nothing.example.test", 443)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://evil.test\\.api.example.test/",
+        "https://api.example.test%2f/",
+        "https://[fe80::1%25eth0]/",
+        "https://api example.test/",
+    ],
+)
+def test_odd_host_names_are_refused(url: str) -> None:
+    with pytest.raises(BlockedURL):
+        policy(allowed=("*.example.test", "api.example.test")).check(url)
+
+
+def test_underscores_in_internal_names_are_allowed() -> None:
+    assert policy(allowed=("svc_a.corp.example.test",)).check("https://svc_a.corp.example.test/")
+
+
+def test_legacy_metadata_address_is_blocked() -> None:
+    assert not address_allowed("192.0.0.192")

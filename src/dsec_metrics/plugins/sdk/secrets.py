@@ -42,4 +42,7 @@ class SecretResolver:
         provider = self._providers.get(scheme)
         if provider is None:
             raise SecretError(f"no secret provider for scheme {scheme!r}")
-        return provider.resolve(rest)
+        value = provider.resolve(rest)
+        if any(ord(c) < 32 or ord(c) == 127 for c in value.get_secret_value()):
+            raise SecretError(f"secret {scheme}://{rest} contains control characters")
+        return value

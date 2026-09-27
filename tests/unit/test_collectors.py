@@ -158,3 +158,20 @@ def test_secret_providers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
     (tmp_path / "empty").write_text("", encoding="utf-8")
     with pytest.raises(SecretError, match="empty"):
         resolver.resolve(f"file://{tmp_path}/empty")
+
+
+def test_secrets_with_control_characters_are_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    resolver = SecretResolver({"env": EnvSecretProvider(), "file": FileSecretProvider()})
+    monkeypatch.setenv("TEST_NEWLINE", "token-value\n")
+    with pytest.raises(SecretError, match="control characters") as info:
+        resolver.resolve("env://TEST_NEWLINE")
+    assert "token-value" not in str(info.value)
+    crlf = tmp_path / "crlf"
+    crlf.write_bytes(b"token-value\r\n")
+    assert resolver.resolve(f"file://{crlf}").get_secret_value() == "token-value"
+    inner = tmp_path / "inner"
+    inner.write_bytes(b"token\r\nvalue\n")
+    with pytest.raises(SecretError, match="control characters"):
+        resolver.resolve(f"file://{inner}")

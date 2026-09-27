@@ -15,6 +15,7 @@ does not help.
 from __future__ import annotations
 
 import ipaddress
+import re
 import socket
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -32,6 +33,7 @@ METADATA_NAMES = frozenset(
         "169.254.169.254",
         "169.254.170.2",
         "100.100.100.200",
+        "192.0.0.192",
         "fd00:ec2::254",
     }
 )
@@ -45,6 +47,9 @@ EXTRA_BLOCKED = (
 NAT64 = ipaddress.ip_network("64:ff9b::/96")
 
 Resolver = Callable[[str, int], Sequence[str]]
+
+# A DNS name, or an IPv6 literal as urlsplit returns it (without brackets).
+HOST_NAME = re.compile(r"^(?:[a-z0-9_-]+\.)*[a-z0-9_-]+$|^[0-9a-f:.]+$")
 
 
 class BlockedURL(ValueError):  # noqa: N818 (reads better at call sites than BlockedURLError)
@@ -139,6 +144,8 @@ class OutboundPolicy:
         host = (parts.hostname or "").lower().rstrip(".")
         if not host:
             raise BlockedURL("URL has no host")
+        if not HOST_NAME.match(host):
+            raise BlockedURL("host name has characters that are not allowed")
         if parts.username or parts.password:
             raise BlockedURL("credentials in URLs are not allowed; use a secret reference")
         if scheme == "http":

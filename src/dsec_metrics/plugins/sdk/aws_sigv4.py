@@ -49,6 +49,15 @@ def _unquote(value: str) -> str:
     return unquote_plus(value)
 
 
+def _host_header(scheme: str, hostname: str, port: int | None) -> str:
+    """The Host header http.client sends: lower case, no default port."""
+    host = hostname.lower().rstrip(".")
+    if ":" in host:
+        host = f"[{host}]"
+    default = 443 if scheme.lower() == "https" else 80
+    return host if port in (None, default) else f"{host}:{port}"
+
+
 def sign(
     method: str,
     url: str,
@@ -64,7 +73,7 @@ def sign(
     amz_date = when.strftime("%Y%m%dT%H%M%SZ")
     day = when.strftime("%Y%m%d")
     parts = urlsplit(url)
-    host = parts.netloc
+    host = _host_header(parts.scheme, parts.hostname or "", parts.port)
     out = {**headers, "host": host, "x-amz-date": amz_date}
     if credentials.session_token:
         out["x-amz-security-token"] = credentials.session_token

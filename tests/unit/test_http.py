@@ -5,6 +5,7 @@ import http.client
 import json
 import ssl
 import threading
+import time
 from collections.abc import Iterator
 from datetime import date
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -28,6 +29,7 @@ from dsec_metrics.plugins.sdk.http import (
     default_policy,
     dig,
     next_link,
+    path_segment,
     socket_transport,
 )
 from dsec_metrics.plugins.sdk.secrets import SecretResolver
@@ -423,6 +425,94 @@ def test_https_verifies_the_certificate_against_the_host_name(tmp_path: Path) ->
         )
         with pytest.raises(CollectorError, match="SSLCertVerificationError"):
             c.get_json("https://api.example.test/")
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+# Hardening from the M4 review.
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["Host", "host", "X-Forwarded-Host", "x-forwarded-for", "X-HTTP-Method-Override", "Forwarded"],
+)
+def test_routing_and_method_headers_are_refused(name: str) -> None:
+    t = Scripted()
+    c, _ = client(t)
+    with pytest.raises(CollectorError, match="cannot be set by a collector"):
+        c.request("GET", BASE, headers={name: "admin.internal"})
+    assert t.requests == []
+
+
+def test_amz_target_must_match_the_declared_action() -> None:
+    t = Scripted(ok())
+    c, _ = client(t, read_only_posts=frozenset({"Svc.List"}))
+    with pytest.raises(CollectorError, match="x-amz-target must match"):
+        c.request("POST", BASE, headers={"X-Amz-Target": "Svc.Delete"}, action="Svc.List")
+    c.request("POST", BASE, headers={"x-amz-target": "Svc.List"}, action="Svc.List")
+    assert len(t.requests) == 1
+
+
+def test_header_errors_do_not_quote_the_header() -> None:
+    target = Target("http", "api.example.test", 9, "127.0.0.1", "/")
+    c = HttpClient(
+        POLICY, transport=lambda r, _t, timeout: socket_transport(r, target, timeout), retries=0
+    )
+    with pytest.raises(CollectorError) as info:
+        c.get_json(BASE, headers={"Authorization": "Bearer very-secret\n"})
+    assert "very-secret" not in str(info.value)
+    assert "invalid request header" in str(info.value)
+
+
+def test_next_page_must_keep_scheme_and_port() -> None:
+    for link in ("https://api.example.test:8443/items?p=2", "http://api.example.test/items?p=2"):
+        collector, _ = demo({"GET /items": ([], {"link": f'<{link}>; rel="next"'})})
+        with pytest.raises(CollectorError, match="another host or port"):
+            list(collector.pages_by_link(f"{BASE}/items"))
+
+
+def test_retry_after_with_non_ascii_digits_falls_back_to_backoff() -> None:
+    c, slept = client(Scripted(ok(status=429, **{"retry-after": "²"}), ok()), backoff=1)
+    c.get_json(BASE)
+    assert 1 <= slept[0] <= 1.5
+
+
+def test_path_segments_from_responses() -> None:
+    assert path_segment("a/b c") == "a%2Fb%20c"
+    assert path_segment(7) == "7"
+    for bad in ("", ".", ".."):
+        with pytest.raises(CollectorError, match="dot segment"):
+            path_segment(bad)
+
+
+class Trickle(BaseHTTPRequestHandler):
+    def do_GET(self) -> None:
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        try:
+            for _ in range(40):
+                self.wfile.write(b" ")
+                self.wfile.flush()
+                time.sleep(0.05)
+        except OSError:
+            pass
+
+    def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
+        del format, args
+
+
+def test_a_slow_response_hits_the_overall_deadline() -> None:
+    srv = HTTPServer(("127.0.0.1", 0), Trickle)
+    thread = threading.Thread(target=srv.serve_forever, daemon=True)
+    thread.start()
+    try:
+        target = Target("http", "api.example.test", srv.server_address[1], "127.0.0.1", "/")
+        started = time.monotonic()
+        with pytest.raises(TimeoutError, match="deadline"):
+            socket_transport(HttpRequest("GET", "http://api.example.test/", {}), target, 0.1)
+        assert time.monotonic() - started < 1.5
     finally:
         srv.shutdown()
         srv.server_close()

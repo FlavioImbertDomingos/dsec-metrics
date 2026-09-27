@@ -19,7 +19,7 @@ import time
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
-from urllib.parse import urlencode, urljoin, urlsplit
+from urllib.parse import quote, urlencode, urljoin, urlsplit
 
 from pydantic import Field
 
@@ -31,6 +31,34 @@ from dsec_metrics.plugins.sdk.ssrf import BlockedURL, OutboundPolicy, Target
 
 MAX_BYTES = 20 * 1024 * 1024
 RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
+# A whole request must finish within this many times the per-read timeout.
+DEADLINE_FACTOR = 4
+CHUNK = 64 * 1024
+
+# Headers a collector may not set: they change where a request is routed, how it is
+# framed, or which method a server applies. The client sets Host from the checked URL.
+FORBIDDEN_HEADERS = frozenset(
+    {
+        "host",
+        "content-length",
+        "transfer-encoding",
+        "connection",
+        "te",
+        "upgrade",
+        "forwarded",
+        "x-original-url",
+        "x-rewrite-url",
+        "x-http-method",
+        "x-http-method-override",
+        "x-method-override",
+    }
+)
+
+
+def forbidden_header(name: str) -> bool:
+    """Whether a collector may not set this header."""
+    lowered = name.strip().lower()
+    return lowered in FORBIDDEN_HEADERS or lowered.startswith("x-forwarded-")
 
 
 @dataclass(frozen=True)
@@ -93,12 +121,22 @@ def socket_transport(request: HttpRequest, target: Target, timeout: float) -> Ht
         conn = _PinnedHTTPS(target, timeout, ssl.create_default_context())
     else:
         conn = _PinnedHTTP(target, timeout)
+    deadline = time.monotonic() + timeout * DEADLINE_FACTOR
     try:
         conn.request(request.method, target.path, body=request.body, headers=dict(request.headers))
         response = conn.getresponse()
-        body = response.read(MAX_BYTES + 1)
+        chunks: list[bytes] = []
+        size = 0
+        while size <= MAX_BYTES:
+            if time.monotonic() > deadline:
+                raise TimeoutError("response took longer than the request deadline")
+            chunk = response.read1(CHUNK)
+            if not chunk:
+                break
+            chunks.append(chunk)
+            size += len(chunk)
         headers = {k.lower(): v for k, v in response.getheaders()}
-        return HttpResponse(response.status, headers, body)
+        return HttpResponse(response.status, headers, b"".join(chunks))
     finally:
         conn.close()
 
@@ -111,8 +149,9 @@ def _transient(response: HttpResponse) -> bool:
 
 
 def _retry_after(value: str | None) -> float | None:
-    if value and value.strip().isdigit():
-        return min(float(value.strip()), 300.0)
+    text = (value or "").strip()
+    if text.isascii() and text.isdigit():
+        return min(float(text), 300.0)
     return None
 
 
@@ -150,6 +189,11 @@ class HttpClient:
                 )
         elif method != "GET":
             raise CollectorError(f"{method} is not allowed: collectors are read-only")
+        for name, value in (headers or {}).items():
+            if forbidden_header(name):
+                raise CollectorError(f"header {name} cannot be set by a collector")
+            if name.lower() == "x-amz-target" and value != action:
+                raise CollectorError("x-amz-target must match the declared read action")
         if params:
             url = url + ("&" if "?" in url else "?") + urlencode(params, doseq=True)
         given = dict(headers or {})
@@ -170,10 +214,15 @@ class HttpClient:
                     HttpRequest(method, url, all_headers, body, action), target, self.timeout
                 )
             except (OSError, http.client.HTTPException) as exc:
+                # Certificate errors are OSErrors (and ValueErrors); they come first.
                 if attempt == self.retries:
                     raise CollectorError(f"{label}: {type(exc).__name__}") from None
                 self.sleep(self._delay(attempt, None))
                 continue
+            except ValueError:
+                # http.client rejects control characters in headers with a message that
+                # quotes the header, which may hold a secret. Say nothing about it.
+                raise CollectorError(f"{label}: invalid request header") from None
             if len(response.body) > self.max_bytes:
                 raise CollectorError(f"{label}: response larger than {self.max_bytes} bytes")
             if _transient(response) and attempt < self.retries:
@@ -292,7 +341,7 @@ class HttpCollector(Collector):
     ) -> Iterator[list[dict[str, Any]]]:
         """Follow ``Link: rel="next"`` headers. Next links must stay on the same host;
         ``params`` go on the first request only, since next links carry their own."""
-        host = urlsplit(url).hostname
+        origin = _origin(url)
         pages = records = 0
         next_url: str | None = url
         query = params
@@ -306,8 +355,8 @@ class HttpCollector(Collector):
             yield items
             following = next_link(response.headers.get("link"))
             next_url = urljoin(next_url, following) if following else None
-            if next_url and urlsplit(next_url).hostname != host:
-                raise CollectorError(f"{self.name}: next page is on another host")
+            if next_url and _origin(next_url) != origin:
+                raise CollectorError(f"{self.name}: next page is on another host or port")
 
     def pages_by_offset(
         self,
@@ -369,6 +418,24 @@ class HttpCollector(Collector):
             if not nxt or nxt == cursor:
                 return
             cursor = str(nxt)
+
+
+def path_segment(value: Any) -> str:
+    """A value from a response, made safe to put in a URL path as one segment."""
+    text = str(value)
+    if text in {"", ".", ".."}:
+        raise CollectorError("a path segment from the response is empty or a dot segment")
+    return quote(text, safe="")
+
+
+def _origin(url: str) -> tuple[str, str, int | None]:
+    parts = urlsplit(url)
+    scheme = parts.scheme.lower()
+    try:
+        port = parts.port or (443 if scheme == "https" else 80)
+    except ValueError:
+        port = None
+    return scheme, (parts.hostname or "").rstrip("."), port
 
 
 def _records(value: Any) -> list[dict[str, Any]]:

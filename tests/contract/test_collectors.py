@@ -396,3 +396,41 @@ def test_rest_errors(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_rest_config_validation(change: dict[str, Any], message: str) -> None:
     with pytest.raises(ValidationError, match=message):
         RestCollector.config_model.model_validate({**CASES["rest"].config, **change})
+
+
+def test_aws_sends_only_declared_iam_reads_and_limits_records(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    collector, transport = make(CASES["aws"], monkeypatch)
+    assert isinstance(collector, AwsCollector)
+    with pytest.raises(CollectorError, match="not a declared read"):
+        collector._iam("DeleteUser", {"UserName": "x"})
+    assert transport.requests == []
+    limited, _ = make(CASES["aws"], monkeypatch, max_records=1)
+    with pytest.raises(CollectorError, match="more than 1 records"):
+        collect_all(limited, "iam_access_key_age", AS_OF)
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    [
+        ({"headers": {"Host": "admin.internal"}}, "cannot be set"),
+        ({"headers": {"X-Forwarded-Host": "admin.internal"}}, "cannot be set"),
+        ({"auth": {"header": "Host", "secret": "env://X"}}, "cannot be set"),
+    ],
+)
+def test_rest_refuses_routing_headers(change: dict[str, Any], message: str) -> None:
+    with pytest.raises(ValidationError, match=message):
+        RestCollector.config_model.model_validate({**CASES["rest"].config, **change})
+
+
+def test_dot_segments_from_responses_are_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    case = CASES["vault"]
+    routes: dict[str, Any] = {
+        **case.routes,
+        "GET /v1/transit/keys?list=true": {"data": {"keys": [".."]}},
+    }
+    collector, _ = make(case, monkeypatch)
+    collector.use_transport(FixtureTransport(routes), fixture_policy(*case.hosts))
+    with pytest.raises(CollectorError, match="dot segment"):
+        collect_all(collector, "transit_key_versions", AS_OF)

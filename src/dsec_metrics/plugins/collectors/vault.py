@@ -6,12 +6,11 @@ from __future__ import annotations
 from collections.abc import Iterator
 from datetime import UTC, date, datetime
 from typing import Any, ClassVar
-from urllib.parse import quote
 
 from pydantic import Field
 
 from dsec_metrics.plugins.sdk.base import CollectorError, ConnectionResult, RecordBatch
-from dsec_metrics.plugins.sdk.http import HttpCollector, HttpCollectorConfig
+from dsec_metrics.plugins.sdk.http import HttpCollector, HttpCollectorConfig, path_segment
 
 
 class VaultConfig(HttpCollectorConfig):
@@ -118,7 +117,7 @@ class VaultCollector(HttpCollector):
         mount = self.config.transit_mount
         listing = self._get(f"{mount}/keys", list="true")
         for name in sorted((listing.get("data") or {}).get("keys") or []):
-            key = (self._get(f"{mount}/keys/{quote(str(name), safe='')}").get("data")) or {}
+            key = (self._get(f"{mount}/keys/{path_segment(name)}").get("data")) or {}
             versions = key.get("keys") or {}
             latest = key.get("latest_version") or (max(map(int, versions)) if versions else None)
             created = versions.get(str(latest)) if isinstance(versions, dict) else None

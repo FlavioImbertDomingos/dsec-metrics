@@ -14,7 +14,12 @@ from typing import Any, ClassVar, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from dsec_metrics.plugins.sdk.base import CollectorError, ConnectionResult, RecordBatch
-from dsec_metrics.plugins.sdk.http import HttpCollector, HttpCollectorConfig, dig
+from dsec_metrics.plugins.sdk.http import (
+    HttpCollector,
+    HttpCollectorConfig,
+    dig,
+    forbidden_header,
+)
 
 
 class RestQuery(BaseModel):
@@ -56,6 +61,13 @@ class RestAuth(BaseModel):
     scheme: str = Field(default="Bearer", max_length=32)
     secret: str = Field(description="Secret reference")
 
+    @field_validator("header")
+    @classmethod
+    def _allowed(cls, value: str) -> str:
+        if forbidden_header(value):
+            raise ValueError(f"header {value} cannot be set by a collector")
+        return value
+
 
 class RestConfig(HttpCollectorConfig):
     """Base URL, optional authentication, queries, and dimensions added to every record."""
@@ -77,6 +89,8 @@ class RestConfig(HttpCollectorConfig):
     @classmethod
     def _no_secret_headers(cls, value: dict[str, str]) -> dict[str, str]:
         for name in value:
+            if forbidden_header(name):
+                raise ValueError(f"header {name} cannot be set by a collector")
             if name.lower() in {"authorization", "cookie", "x-api-key", "proxy-authorization"}:
                 raise ValueError(
                     f"header {name} carries credentials; use auth with a secret reference"

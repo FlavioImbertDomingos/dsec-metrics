@@ -27,6 +27,9 @@ SERVICES = {
 }
 
 
+IAM_READS = frozenset({"ListUsers", "ListAccessKeys"})
+
+
 class AwsConfig(HttpCollectorConfig):
     """One account and region. Credentials are secret references."""
 
@@ -147,6 +150,9 @@ class AwsCollector(HttpCollector):
         return self.http.request("POST", url, headers=headers, body=body, action=action).json()
 
     def _iam(self, action: str, params: dict[str, str]) -> Any:
+        # IAM's Query API accepts writes over GET too, so only these actions are sent.
+        if action not in IAM_READS:
+            raise CollectorError(f"aws: IAM action {action} is not a declared read")
         region = "us-east-1"  # IAM is global and signs in us-east-1
         query = urlencode({"Action": action, "Version": "2010-05-08", **params})
         url = f"{self._endpoint('iam')}?{query}"
@@ -271,16 +277,18 @@ class AwsCollector(HttpCollector):
 
     def _iam_access_key_age(self, as_of: date) -> Iterator[dict[str, Any]]:
         marker: str | None = None
-        pages = 0
+        pages = records = 0
         while True:
             data = self._iam("ListUsers", {"Marker": marker} if marker else {})
             result = (data.get("ListUsersResponse") or {}).get("ListUsersResult") or {}
             pages += 1
-            self._check_limits(pages, 0)
+            self._check_limits(pages, records)
             for user in _members(result.get("Users")):
                 keys = self._iam("ListAccessKeys", {"UserName": user["UserName"]})
                 listing = (keys.get("ListAccessKeysResponse") or {}).get("ListAccessKeysResult")
                 for key in _members((listing or {}).get("AccessKeyMetadata")):
+                    records += 1
+                    self._check_limits(pages, records)
                     created = _epoch_date(key.get("CreateDate"))
                     yield self._record(
                         {

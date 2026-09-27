@@ -6,12 +6,11 @@ from __future__ import annotations
 from collections.abc import Iterator
 from datetime import UTC, date, datetime
 from typing import Any, ClassVar
-from urllib.parse import quote
 
 from pydantic import Field
 
 from dsec_metrics.plugins.sdk.base import CollectorError, ConnectionResult, RecordBatch
-from dsec_metrics.plugins.sdk.http import HttpCollector, HttpCollectorConfig
+from dsec_metrics.plugins.sdk.http import HttpCollector, HttpCollectorConfig, path_segment
 
 
 class GithubConfig(HttpCollectorConfig):
@@ -92,7 +91,7 @@ class GithubCollector(HttpCollector):
         branch = meta.get("default_branch", "main")
         try:
             rules = self.http.get_json(
-                f"{self._repo(repo)}/branches/{quote(str(branch), safe='')}/protection",
+                f"{self._repo(repo)}/branches/{path_segment(branch)}/protection",
                 headers=self._headers(),
             )
         except CollectorError as exc:
