@@ -68,6 +68,13 @@ class Collector(ABC):
         """Validate a raw config mapping and build the collector."""
         return cls(cls.config_model.model_validate(config), secrets)
 
+    @classmethod
+    def queries_for(cls, config: dict[str, Any]) -> list[str]:
+        """Query names an instance with this raw config offers. Collectors whose queries
+        come from their config (``queries = {"*": ...}``) override this."""
+        del config
+        return sorted(cls.queries)
+
     @abstractmethod
     def test_connection(self) -> ConnectionResult:
         """Check that the source is reachable with the configured, read-only access."""

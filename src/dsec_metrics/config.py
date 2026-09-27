@@ -71,6 +71,11 @@ class Settings(BaseSettings):
 
     content_dir: Path = Path("content")
 
+    # Hosts collectors may call, comma-separated: exact names or *.suffix. Empty means no
+    # outbound calls at all. Plain HTTP only to hosts in the second list (test endpoints).
+    collector_allowed_hosts: str = ""
+    collector_allow_http_hosts: str = ""
+
     # Ed25519 private key (PKCS#8 PEM) that signs report package manifests.
     report_signing_key_file: Path | None = None
 
@@ -98,6 +103,16 @@ class Settings(BaseSettings):
             raise ValueError("set DSEC_DB_PASSWORD or DSEC_DB_PASSWORD_FILE, not both")
         return self
 
+    @property
+    def collector_allowed_host_list(self) -> tuple[str, ...]:
+        """``collector_allowed_hosts`` split into names."""
+        return _split_hosts(self.collector_allowed_hosts)
+
+    @property
+    def collector_http_host_list(self) -> tuple[str, ...]:
+        """``collector_allow_http_hosts`` split into names."""
+        return _split_hosts(self.collector_allow_http_hosts)
+
     def database_password(self) -> SecretStr:
         """Return the database password from the file or the variable."""
         if self.db_password_file is not None:
@@ -120,6 +135,10 @@ class Settings(BaseSettings):
             database=self.db_name,
             query=query,
         )
+
+
+def _split_hosts(value: str) -> tuple[str, ...]:
+    return tuple(h.strip().lower() for h in value.split(",") if h.strip())
 
 
 def read_secret_file(path: Path) -> str:

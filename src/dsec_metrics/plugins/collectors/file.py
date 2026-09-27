@@ -71,6 +71,11 @@ class FileCollector(Collector):
 
     config: FileConfig
 
+    @classmethod
+    def queries_for(cls, config: dict[str, Any]) -> list[str]:
+        files = config.get("files")
+        return sorted(files) if isinstance(files, dict) else []
+
     @property
     def query_names(self) -> list[str]:
         """Queries this instance offers (the keys of ``files``)."""

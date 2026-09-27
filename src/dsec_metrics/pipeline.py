@@ -30,7 +30,6 @@ from dsec_metrics.db.models import (
     MeasurementRow,
     RecordBatchRow,
 )
-from dsec_metrics.plugins.collectors.file import FileCollector
 from dsec_metrics.plugins.sdk.base import Collector, CollectorError
 from dsec_metrics.plugins.sdk.registry import PluginError, collector_class
 from dsec_metrics.plugins.sdk.secrets import SecretError, SecretResolver
@@ -44,10 +43,7 @@ def instance_queries(instance: CollectorInstance) -> list[str] | None:
         cls = collector_class(instance.plugin)
     except PluginError:
         return None
-    if cls is FileCollector:
-        files = instance.config.get("files")
-        return sorted(files) if isinstance(files, dict) else []
-    return sorted(cls.queries)
+    return cls.queries_for(dict(instance.config))
 
 
 def build_collector(instance: CollectorInstance, secrets: SecretResolver) -> Collector:
