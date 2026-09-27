@@ -15,8 +15,12 @@ from testcontainers.community.postgres import PostgresContainer
 from dsec_metrics.api.app import create_app
 from dsec_metrics.auth.users import ensure_local_user
 from dsec_metrics.config import Mode, Settings, SslMode
+from dsec_metrics.content import load_content
 from dsec_metrics.db.engine import make_engine, make_session_factory, transaction
 from dsec_metrics.db.migrate import upgrade
+from dsec_metrics.pipeline import run_period
+from dsec_metrics.plugins.collectors.sample import SampleConfig, month_ends
+from dsec_metrics.plugins.sdk.registry import default_secret_resolver
 
 # Same image as compose.yaml. Override to test against another Postgres build.
 POSTGRES_IMAGE = os.environ.get(
@@ -68,17 +72,32 @@ def engine(db_settings: Settings) -> Iterator[Engine]:
     eng.dispose()
 
 
-@pytest.fixture
-def session_factory(engine: Engine) -> sessionmaker[Session]:
-    """Clean tables before each test, then hand out sessions."""
+def truncate_all(engine: Engine) -> None:
+    """Empty every application table."""
     with engine.begin() as conn:
         conn.execute(
             text(
                 "TRUNCATE auth_failures, sessions, users, measurements, record_batches,"
-                " collection_runs, collector_instances, definitions, schedules"
+                " collection_runs, collector_instances, definitions, schedules, rate_limits"
                 " RESTART IDENTITY CASCADE"
             )
         )
+
+
+def load_demo(factory: sessionmaker[Session], months: int = 1) -> None:
+    """Sync the default content and run the sample collector for the last month-ends."""
+    content = load_content(CONTENT_DIR)
+    anchor = SampleConfig.model_validate(content.collectors["sample"].config).anchor
+    secrets = default_secret_resolver()
+    for period in month_ends(anchor, months):
+        with transaction(factory) as db:
+            run_period(db, content, period, secrets)
+
+
+@pytest.fixture
+def session_factory(engine: Engine) -> sessionmaker[Session]:
+    """Clean tables before each test, then hand out sessions."""
+    truncate_all(engine)
     return make_session_factory(engine)
 
 

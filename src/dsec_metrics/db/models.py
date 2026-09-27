@@ -87,6 +87,18 @@ class AuthFailure(Base):
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
 
+class RateLimitWindow(Base):
+    """Request count for one key in one fixed window. Unlogged: losing it on a crash only
+    resets the counters."""
+
+    __tablename__ = "rate_limits"
+    __table_args__ = {"prefixes": ["UNLOGGED"]}  # noqa: RUF012 (SQLAlchemy convention)
+
+    key: Mapped[str] = mapped_column(String(80), primary_key=True)
+    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    count: Mapped[int] = mapped_column(Integer)
+
+
 class DefinitionVersion(Base):
     """One version of one definition. New content creates a new row; nothing is updated
     except the ``current`` flag."""

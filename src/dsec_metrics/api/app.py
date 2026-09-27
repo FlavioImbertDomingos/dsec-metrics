@@ -11,6 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from dsec_metrics.__about__ import PRODUCT_NAME, __version__
+from dsec_metrics.api.limits import enforce_limits
 from dsec_metrics.api.routes import auth, health, meta
 from dsec_metrics.config import Mode, Settings, get_settings, validate_startup
 from dsec_metrics.db.engine import make_engine, make_session_factory
@@ -54,6 +55,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(meta.router, prefix="/api")
     app.include_router(auth.router, prefix="/api")
     app.include_router(auth.me_router, prefix="/api")
+
+    # Middleware added later runs earlier: no_store wraps the limits, so 429s are not cached.
+    app.middleware("http")(enforce_limits)
 
     @app.middleware("http")
     async def no_store(

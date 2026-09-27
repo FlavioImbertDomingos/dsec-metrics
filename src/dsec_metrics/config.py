@@ -63,6 +63,12 @@ class Settings(BaseSettings):
     login_max_failures_per_user: int = Field(default=5, ge=1)
     login_max_failures_per_source: int = Field(default=20, ge=1)
 
+    # Fixed one-minute windows. Every request counts against its client address; requests
+    # with a session cookie also count against that session.
+    rate_limit_per_address: int = Field(default=1200, ge=1)
+    rate_limit_per_session: int = Field(default=600, ge=1)
+    max_request_bytes: int = Field(default=1024 * 1024, ge=1024)
+
     content_dir: Path = Path("content")
 
     dev_admin_username: str = "dev-admin"
