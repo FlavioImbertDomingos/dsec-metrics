@@ -1,7 +1,7 @@
 import { LogOut } from "lucide-react";
 import type * as React from "react";
 
-import type { Me, Meta } from "@/api/client";
+import { abilities, type Me, type Meta } from "@/api/client";
 import { useSignOut } from "@/auth/session";
 import { Link, useLocation } from "@/lib/router";
 import { cn } from "@/lib/utils";
@@ -49,7 +49,7 @@ export function AppShell({ me, meta, children }: AppShellProps) {
             </Button>
           </div>
         </div>
-        <Nav />
+        <Nav me={me} />
       </header>
       <main id="main" className="mx-auto max-w-7xl px-6 py-8">
         {children}
@@ -66,7 +66,7 @@ export function DevBadge() {
   );
 }
 
-const NAV = [
+const STAFF_NAV = [
   { to: "/", label: "Overview" },
   { to: "/dashboards/team-operations", label: "Team operations" },
   { to: "/dashboards/management", label: "Management" },
@@ -75,10 +75,16 @@ const NAV = [
   { to: "/controls", label: "Controls" },
   { to: "/exceptions", label: "Exceptions" },
   { to: "/findings", label: "Findings" },
+  { to: "/reports", label: "Reports" },
+  { to: "/audit-room", label: "Audit room" },
 ];
 
-function Nav() {
+function Nav({ me }: { me: Me }) {
   const { path } = useLocation();
+  const can = abilities(me);
+  const NAV = can.staff
+    ? [...STAFF_NAV, ...(can.admin ? [{ to: "/audit-log", label: "Audit log" }] : [])]
+    : [{ to: "/audit-room", label: "Audit room" }];
   const current = (to: string) => (to === "/" ? path === "/" : path.startsWith(to));
   return (
     <nav aria-label="Main" className="mx-auto max-w-7xl overflow-x-auto px-6" data-print="hide">

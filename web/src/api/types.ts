@@ -246,3 +246,66 @@ export interface Dashboard extends DashboardSummary {
   dimensions: Record<string, string[]>;
   widgets: Widget[];
 }
+
+export interface ReportPackage {
+  id: string;
+  report_type: string;
+  title: string;
+  scope: Record<string, unknown>;
+  period_start: string;
+  period_end: string;
+  frameworks: string[];
+  manifest_sha256: string;
+  key_fingerprint: string;
+  pdf_rendered: boolean;
+  generated_by: string;
+  generated_at: string;
+  size: number;
+}
+
+export interface AuditEvent {
+  seq: number;
+  occurred_at: string;
+  actor: string;
+  action: string;
+  target: string;
+  details: Record<string, unknown>;
+  prev_hash: string;
+  hash: string;
+}
+
+export interface Grant {
+  id: string;
+  username: string;
+  frameworks: string[];
+  period_start: string;
+  period_end: string;
+  expires_at: string;
+}
+
+export interface AuditRoom {
+  auditor: boolean;
+  grants: Grant[];
+  packages: ReportPackage[];
+  access_log: AuditEvent[];
+}
+
+export interface ChainCheck {
+  ok: boolean;
+  checked: number;
+  broken_at: number | null;
+  reason: string | null;
+  head: string;
+}
+
+export interface PublicKey {
+  algorithm: string;
+  fingerprint: string;
+  pem: string;
+}
+
+export interface LinkCreated {
+  url: string;
+  expires_at: string;
+  username: string;
+}

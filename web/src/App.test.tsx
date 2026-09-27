@@ -8,7 +8,12 @@ import { type Route, stubFetch } from "@/test/fetch";
 import { App } from "./App";
 
 const META = { product_name: "dsec-metrics", version: "0.0.1a1", mode: "development" };
-const ME = { username: "dev-admin", display_name: "Development admin", csrf_token: "csrf" };
+const ME = {
+  username: "dev-admin",
+  display_name: "Development admin",
+  csrf_token: "csrf",
+  roles: ["admin"],
+};
 
 function renderApp(routes: Record<string, Route>) {
   const mock = stubFetch({ "GET /api/meta": () => ({ status: 200, body: META }), ...routes });

@@ -52,6 +52,21 @@ export interface Me {
   username: string;
   display_name: string;
   csrf_token: string;
+  roles: string[];
+}
+
+const STAFF = new Set(["admin", "metric_owner", "reviewer", "viewer", "service"]);
+const AUTHORS = new Set(["admin", "metric_owner", "reviewer"]);
+
+/** What the signed-in user may do. The API enforces the same rules. */
+export function abilities(me: Pick<Me, "roles">) {
+  const roles = me.roles;
+  return {
+    staff: roles.some((r) => STAFF.has(r)),
+    author: roles.some((r) => AUTHORS.has(r)),
+    admin: roles.includes("admin"),
+    auditor: roles.includes("auditor"),
+  };
 }
 
 export interface Meta {

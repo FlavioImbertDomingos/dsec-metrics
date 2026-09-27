@@ -106,7 +106,7 @@ test("keyboard users can reach every navigation item", async ({ page }) => {
   await page.keyboard.press("Tab");
   await expect(page.getByRole("link", { name: "Skip to main content" })).toBeFocused();
   const nav = page.getByRole("navigation", { name: "Main" }).getByRole("link");
-  await expect(nav).toHaveCount(8);
+  await expect(nav).toHaveCount(11); // the admin also sees Reports, Audit room and Audit log
   await nav.nth(3).focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name: "Risk committee", level: 1 })).toBeVisible();

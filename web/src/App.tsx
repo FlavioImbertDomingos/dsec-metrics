@@ -1,3 +1,4 @@
+import { abilities } from "@/api/client";
 import { useMe, useMeta } from "@/auth/session";
 import { AppShell } from "@/components/AppShell";
 import { SignIn } from "@/pages/SignIn";
@@ -37,7 +38,7 @@ export function App() {
 
   return (
     <AppShell me={me.data} meta={meta.data}>
-      <Routes />
+      <Routes staff={abilities(me.data).staff} />
     </AppShell>
   );
 }

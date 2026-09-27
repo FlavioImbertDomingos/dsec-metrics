@@ -5,12 +5,20 @@ import { DashboardPage } from "@/pages/DashboardPage";
 import { BatchPage, MeasurementPage, MetricDetailPage, MetricsPage } from "@/pages/MetricPages";
 import { Overview } from "@/pages/Overview";
 import { ExceptionsPage, FindingsPage } from "@/pages/RegisterPages";
+import { AuditLogPage, AuditRoomPage, ReportsPage } from "@/pages/ReportPages";
 
-/** Maps the current path to a screen. Keys force a fresh screen when the id changes. */
-export function Routes() {
+/**
+ * Maps the current path to a screen. Keys force a fresh screen when the id changes.
+ * Auditors are not staff: they get the audit room and nothing else.
+ */
+export function Routes({ staff = true }: { staff?: boolean }) {
   const { path, search } = useLocation();
   let p: Record<string, string> | null;
 
+  if (path === "/audit-room") return <AuditRoomPage />;
+  if (!staff) return <AuditRoomPage />;
+  if (path === "/reports") return <ReportsPage />;
+  if (path === "/audit-log") return <AuditLogPage />;
   if (path === "/") return <Overview />;
   if ((p = match("/dashboards/:id", path))) return <DashboardPage key={p.id} id={p.id ?? ""} />;
   if (path === "/metrics") return <MetricsPage />;

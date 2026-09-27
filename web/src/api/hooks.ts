@@ -1,20 +1,26 @@
 /** TanStack Query hooks for the read API. Keys include every parameter. */
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
 import type {
+  AuditEvent,
+  AuditRoom,
   BatchPage,
+  ChainCheck,
   ControlDetail,
   ControlSummary,
   Dashboard,
   DashboardSummary,
   ExceptionItem,
   FindingItem,
+  LinkCreated,
   MeasurementDetail,
   MetricDetail,
   MetricHistory,
   MetricSummary,
+  PublicKey,
   Register,
+  ReportPackage,
 } from "@/api/types";
 import { withQuery } from "@/lib/router";
 
@@ -120,5 +126,76 @@ export function useFindings(filters: Params) {
     queryKey: ["findings", filters],
     queryFn: () => get<Register<FindingItem>>("/api/findings", filters),
     staleTime: STALE,
+  });
+}
+
+export function useReports() {
+  return useQuery({ queryKey: ["reports"], queryFn: () => get<ReportPackage[]>("/api/reports") });
+}
+
+export function usePublicKey() {
+  return useQuery({
+    queryKey: ["public-key"],
+    queryFn: () => get<PublicKey>("/api/reports/public-key"),
+    staleTime: Infinity,
+    retry: false,
+  });
+}
+
+export interface ReportForm {
+  report_type: string;
+  period_start: string;
+  period_end: string;
+  control_id?: string;
+  framework?: string;
+  requirements?: string[];
+  metric_id?: string;
+  prepared_for?: string;
+}
+
+export function useCreateReport() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (form: ReportForm) =>
+      api<ReportPackage>("/api/reports", { method: "POST", body: form }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ["reports"] });
+      void client.invalidateQueries({ queryKey: ["audit-room"] });
+    },
+  });
+}
+
+export function useCreateLink(packageId: string) {
+  return useMutation({
+    mutationFn: (body: { username: string; days: number }) =>
+      api<LinkCreated>(`/api/reports/${encodeURIComponent(packageId)}/links`, {
+        method: "POST",
+        body,
+      }),
+  });
+}
+
+export function useAuditRoom() {
+  return useQuery({ queryKey: ["audit-room"], queryFn: () => get<AuditRoom>("/api/audit-room") });
+}
+
+export function useAuditEvents(before: number | undefined, action: string | undefined) {
+  return useQuery({
+    queryKey: ["audit-events", before, action],
+    queryFn: () =>
+      get<AuditEvent[]>("/api/audit/events", {
+        before: before === undefined ? undefined : String(before),
+        action,
+        limit: "50",
+      }),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useAuditVerify() {
+  return useQuery({
+    queryKey: ["audit-verify"],
+    queryFn: () => get<ChainCheck>("/api/audit/verify"),
+    enabled: false,
   });
 }
