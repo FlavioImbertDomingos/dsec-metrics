@@ -1,0 +1,7 @@
+# pnpm settings for the web package.
+engineStrict: true
+saveExact: true
+# Supply-chain cooldown: ignore releases younger than a week (minutes).
+minimumReleaseAge: 10080
+# No dependency may run install scripts unless listed here.
+onlyBuiltDependencies: []
