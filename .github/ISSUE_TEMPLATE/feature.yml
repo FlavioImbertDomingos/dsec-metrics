@@ -1,0 +1,20 @@
+name: Feature request
+description: Propose a change or a new capability
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve, and for which audience?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What do you propose?
+    validations:
+      required: true
+  - type: textarea
+    id: deps
+    attributes:
+      label: New dependencies, collectors or permissions this would need
