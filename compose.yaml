@@ -1,0 +1,190 @@
+# dsec-metrics on Docker Compose.
+#
+#   make dev-secrets              # once: passwords and a local development CA
+#   docker compose up -d --wait   # then open https://localhost
+#
+# Settings come from .env (see .env.example). Every value has a default, so the stack
+# starts without one. See docs/deployment/compose.md for production settings.
+
+name: dsec-metrics
+
+x-hardening: &hardening
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "5" }
+
+x-app: &app
+  <<: *hardening
+  image: ghcr.io/flavioimbertdomingos/dsec-metrics:${DSEC_VERSION:-dev}
+  build:
+    context: .
+    dockerfile: deploy/docker/app.Dockerfile
+    secrets: [build_ca]
+  pull_policy: ${DSEC_PULL_POLICY:-build}
+  environment: &app-env
+    DSEC_MODE: ${DSEC_MODE:-development}
+    DSEC_LOCAL_ACCOUNTS: ${DSEC_LOCAL_ACCOUNTS:-true}
+    DSEC_PUBLIC_ORIGIN: ${DSEC_PUBLIC_ORIGIN:-https://localhost}
+    DSEC_LOG_LEVEL: ${DSEC_LOG_LEVEL:-INFO}
+    DSEC_DB_HOST: postgres
+    DSEC_DB_NAME: dsec
+    DSEC_DB_USER: dsec
+    DSEC_DB_PASSWORD_FILE: /run/secrets/db_password
+    DSEC_DB_SSLMODE: verify-full
+    DSEC_DB_SSLROOTCERT: /run/secrets/dev_ca_cert
+  secrets: [db_password, dev_ca_cert]
+  tmpfs:
+    - /tmp:size=16m,mode=1777
+    - /run/dsec:size=1m,uid=65532,gid=65532,mode=0700
+  networks: [backend]
+
+services:
+  postgres:
+    <<: *hardening
+    image: postgres:16.15@sha256:1a6ab3f5345eb6dbe04a1349529caabdb0ab09293a09590fad07b2246bfa4b54
+    # The entrypoint starts as root to set up the data directory, then drops to the
+    # postgres user. These are the capabilities that step needs.
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    environment:
+      POSTGRES_DB: dsec
+      POSTGRES_USER: dsec
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --data-checksums"
+      PGDATA: /var/lib/postgresql/data/pgdata
+    # Copy the TLS key into a tmpfs owned by postgres (Postgres refuses group- or
+    # world-readable keys) and allow only TLS connections over the network.
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        install -d -m 700 -o postgres -g postgres /run/pgtls
+        install -m 600 -o postgres -g postgres /run/secrets/db_tls_key /run/pgtls/server.key
+        install -m 644 -o postgres -g postgres /run/secrets/db_tls_cert /run/pgtls/server.crt
+        printf 'local all all trust\nhostssl all all all scram-sha-256\n' > /run/pgtls/pg_hba.conf
+        chown postgres:postgres /run/pgtls/pg_hba.conf
+        exec docker-entrypoint.sh "$$@"
+      - --
+    command:
+      - postgres
+      - -c
+      - ssl=on
+      - -c
+      - ssl_cert_file=/run/pgtls/server.crt
+      - -c
+      - ssl_key_file=/run/pgtls/server.key
+      - -c
+      - ssl_min_protocol_version=TLSv1.3
+      - -c
+      - hba_file=/run/pgtls/pg_hba.conf
+      - -c
+      - password_encryption=scram-sha-256
+    secrets: [db_password, db_tls_cert, db_tls_key]
+    tmpfs:
+      - /tmp:size=64m
+      - /run/pgtls:size=1m
+      - /var/run/postgresql:size=1m
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "dsec", "-d", "dsec", "-h", "/var/run/postgresql"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    shm_size: 128m
+    mem_limit: 1g
+    cpus: 1.0
+    networks: [backend]
+
+  migrate:
+    <<: *app
+    command: ["bootstrap"]
+    environment:
+      <<: *app-env
+      DSEC_DEV_ADMIN_PASSWORD_FILE: /run/secrets/dev_admin_password
+    secrets: [db_password, dev_ca_cert, dev_admin_password]
+    restart: "no"
+    depends_on:
+      postgres: { condition: service_healthy }
+    mem_limit: 256m
+    cpus: 0.5
+
+  api:
+    <<: *app
+    command: ["serve", "api", "--host", "0.0.0.0", "--port", "8000"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD", "/app/.venv/bin/dsec-metrics", "health", "api"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    mem_limit: 512m
+    cpus: 1.0
+
+  worker:
+    <<: *app
+    command: ["serve", "worker"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD", "/app/.venv/bin/dsec-metrics", "health", "worker"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    mem_limit: 512m
+    cpus: 1.0
+
+  web:
+    <<: *hardening
+    image: ghcr.io/flavioimbertdomingos/dsec-metrics-web:${DSEC_VERSION:-dev}
+    build:
+      context: .
+      dockerfile: deploy/docker/web.Dockerfile
+      secrets: [build_ca]
+    pull_policy: ${DSEC_PULL_POLICY:-build}
+    environment:
+      DSEC_HOSTNAME: ${DSEC_HOSTNAME:-localhost}
+    secrets: [web_tls_cert, web_tls_key]
+    tmpfs:
+      - /run/caddy:size=8m,uid=65532,gid=65532,mode=0700
+    ports:
+      - "${DSEC_BIND_ADDRESS:-127.0.0.1}:${DSEC_HTTPS_PORT:-443}:8443"
+    depends_on:
+      api: { condition: service_healthy }
+    mem_limit: 256m
+    cpus: 0.5
+    networks: [edge, backend]
+
+networks:
+  edge: {}
+  backend:
+    internal: true
+
+volumes:
+  pgdata: {}
+
+secrets:
+  # Build-time only: a CA bundle for building behind a TLS-inspecting proxy. Point
+  # DSEC_BUILD_CA_FILE at it; unset means an empty file and the default trust store.
+  build_ca:
+    file: ${DSEC_BUILD_CA_FILE:-/dev/null}
+  db_password:
+    file: ./deploy/compose/secrets/db_password
+  dev_admin_password:
+    file: ./deploy/compose/secrets/dev_admin_password
+  dev_ca_cert:
+    file: ./deploy/compose/secrets/dev_ca.crt
+  db_tls_cert:
+    file: ./deploy/compose/secrets/db_tls.crt
+  db_tls_key:
+    file: ./deploy/compose/secrets/db_tls.key
+  web_tls_cert:
+    file: ./deploy/compose/secrets/web_tls.crt
+  web_tls_key:
+    file: ./deploy/compose/secrets/web_tls.key

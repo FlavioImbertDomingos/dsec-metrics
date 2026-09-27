@@ -1,0 +1,6 @@
+# Development override: publish Postgres on the loopback interface so the API can run
+# on the host with reload (make dev-db, make dev-api, make dev-web).
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"
