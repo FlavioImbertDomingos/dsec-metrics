@@ -1,0 +1,136 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    name: Full CI
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  publish:
+    name: Publish ${{ matrix.image.name }}
+    needs: ci
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: true
+      matrix:
+        image:
+          - { name: dsec-metrics, dockerfile: deploy/docker/app.Dockerfile }
+          - { name: dsec-metrics-web, dockerfile: deploy/docker/web.Dockerfile }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Image name
+        id: name
+        env:
+          OWNER: ${{ github.repository_owner }}
+          IMAGE: ${{ matrix.image.name }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          owner=$(printf '%s' "$OWNER" | tr '[:upper:]' '[:lower:]')
+          echo "repo=ghcr.io/$owner/$IMAGE" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ${{ matrix.image.dockerfile }}
+          push: true
+          tags: ${{ steps.name.outputs.repo }}:${{ steps.name.outputs.version }}
+          # Provenance comes from actions/attest-build-provenance below.
+          provenance: false
+          sbom: false
+          labels: |
+            org.opencontainers.image.version=${{ steps.name.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: CycloneDX SBOM
+        env:
+          REF: ${{ steps.name.outputs.repo }}@${{ steps.build.outputs.digest }}
+          IMAGE: ${{ matrix.image.name }}
+        run: |
+          docker run --rm -v "$PWD":/out \
+            ghcr.io/aquasecurity/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969 \
+            image --format cyclonedx --output "/out/$IMAGE.cdx.json" --no-progress "$REF"
+
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Sign image and attach SBOM attestation (keyless)
+        env:
+          REF: ${{ steps.name.outputs.repo }}@${{ steps.build.outputs.digest }}
+          IMAGE: ${{ matrix.image.name }}
+        run: |
+          cosign sign --yes "$REF"
+          cosign attest --yes --type cyclonedx --predicate "$IMAGE.cdx.json" "$REF"
+
+      - name: SLSA build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ steps.name.outputs.repo }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      - name: Record digest
+        env:
+          REF: ${{ steps.name.outputs.repo }}@${{ steps.build.outputs.digest }}
+          IMAGE: ${{ matrix.image.name }}
+        run: echo "$REF" > "$IMAGE.digest.txt"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-${{ matrix.image.name }}
+          path: |
+            ${{ matrix.image.name }}.cdx.json
+            ${{ matrix.image.name }}.digest.txt
+
+  github-release:
+    name: GitHub release
+    needs: publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: dist
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum ./* > SHA256SUMS
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          prerelease=""
+          case "$TAG" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$TAG" --verify-tag --generate-notes $prerelease dist/*

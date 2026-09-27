@@ -1,0 +1,49 @@
+# Weekly grouped version updates, with a one-week cooldown on new releases.
+# Security updates are not grouped, so they arrive as soon as they are published.
+version: 2
+updates:
+  - package-ecosystem: uv
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 7 }
+    groups:
+      python:
+        applies-to: version-updates
+        patterns: ["*"]
+    commit-message: { prefix: "chore", include: scope }
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 7 }
+    groups:
+      web:
+        applies-to: version-updates
+        patterns: ["*"]
+    commit-message: { prefix: "chore", include: scope }
+
+  - package-ecosystem: docker
+    directory: /deploy/docker
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 7 }
+    groups:
+      base-images:
+        applies-to: version-updates
+        patterns: ["*"]
+    commit-message: { prefix: "chore", include: scope }
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 7 }
+    commit-message: { prefix: "chore", include: scope }
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 7 }
+    groups:
+      actions:
+        applies-to: version-updates
+        patterns: ["*"]
+    commit-message: { prefix: "ci", include: scope }
