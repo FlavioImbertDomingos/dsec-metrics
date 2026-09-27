@@ -37,6 +37,8 @@ x-app: &app
     DSEC_DB_SSLMODE: verify-full
     DSEC_DB_SSLROOTCERT: /run/secrets/dev_ca_cert
     DSEC_REPORT_SIGNING_KEY_FILE: /run/secrets/report_signing_key
+    DSEC_COLLECTOR_ALLOWED_HOSTS: ${DSEC_COLLECTOR_ALLOWED_HOSTS:-}
+    DSEC_COLLECTOR_ALLOW_HTTP_HOSTS: ${DSEC_COLLECTOR_ALLOW_HTTP_HOSTS:-}
   secrets: [db_password, dev_ca_cert, report_signing_key]
   tmpfs:
     - /tmp:size=16m,mode=1777
@@ -140,6 +142,8 @@ services:
       start_period: 10s
     mem_limit: 512m
     cpus: 1.0
+    # Only the worker reaches out, and only to hosts in DSEC_COLLECTOR_ALLOWED_HOSTS.
+    networks: [backend, collectors]
 
   web:
     <<: *hardening
@@ -166,6 +170,8 @@ networks:
   edge: {}
   backend:
     internal: true
+  # Outbound access for collectors. The allowlist in the app decides where they may go.
+  collectors: {}
 
 volumes:
   pgdata: {}
