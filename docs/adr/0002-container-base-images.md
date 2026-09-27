@@ -11,7 +11,8 @@ The brief requires non-root containers with a read-only root filesystem, dropped
 ## Decision
 
 - App image (`dsec-metrics`: API, worker, migrations, CLI): uv installs a python-build-standalone CPython 3.12 and the locked virtual environment in a build stage; the final stage copies both onto `gcr.io/distroless/cc-debian13:nonroot`. The command selects the component.
-- Web image (`dsec-metrics-web`): the front end is built in a `node:24-slim` stage; the static Caddy binary is copied from the official Caddy image onto `gcr.io/distroless/static-debian13:nonroot`. A plain `cp` drops the `cap_net_bind_service` file capability the upstream image sets; Caddy listens on 8443 and needs no capabilities.
+- Web image (`dsec-metrics-web`): the front end is built in a `node:24-slim` stage. Caddy is built from source in a `golang` stage from `deploy/docker/caddy/` (Caddy v2.11.4 with the standard modules) and copied onto `gcr.io/distroless/static-debian13:nonroot`. Caddy listens on 8443 and needs no capabilities.
+- Why Caddy is built from source: the plan copied the binary from the official Caddy image, but that binary was built with Go 1.26.3 and older `x/crypto`, `x/net`, `x/text` and `grpc` modules, and trivy reported 17 high findings in it. Building with Go 1.26.8 and upgraded modules clears them. `go.mod` and `go.sum` pin every module, and Dependabot (`gomod`) proposes updates weekly.
 - Every base image is pinned by digest. Dependabot proposes digest updates weekly.
 - Health checks run the application binary in exec form (`dsec-metrics health api`), since there is no shell or curl.
 - An optional BuildKit secret, `build_ca`, carries a CA bundle for builds behind TLS-inspecting proxies. It is mounted only during `RUN` steps and never lands in a layer.

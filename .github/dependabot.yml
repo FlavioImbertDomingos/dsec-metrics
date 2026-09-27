@@ -32,6 +32,16 @@ updates:
         patterns: ["*"]
     commit-message: { prefix: "chore", include: scope }
 
+  - package-ecosystem: gomod
+    directory: /deploy/docker/caddy
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 7 }
+    groups:
+      caddy:
+        applies-to: version-updates
+        patterns: ["*"]
+    commit-message: { prefix: "chore", include: scope }
+
   - package-ecosystem: docker-compose
     directory: /
     schedule: { interval: weekly, day: monday }

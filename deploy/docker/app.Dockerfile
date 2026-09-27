@@ -31,6 +31,13 @@ RUN --mount=type=secret,id=build_ca,required=false \
     uv sync --no-default-groups --no-editable \
  && install -d -o 65532 -g 65532 -m 0700 /rootfs/run/dsec
 
+# The runtime never installs packages. Remove pip and ensurepip from the interpreter so
+# their vendored libraries are not shipped (or scanned) at all.
+RUN set -eu; for py in /opt/python/cpython-3.12*; do \
+      rm -rf "$py"/lib/python3.12/site-packages/pip "$py"/lib/python3.12/site-packages/pip-* \
+             "$py"/lib/python3.12/ensurepip "$py"/bin/pip*; \
+    done
+
 FROM gcr.io/distroless/cc-debian13:nonroot@sha256:54df941ed0d06a1bd95ef5e0ce391fd8d9f94b64782dc9a60062727849ee3f97
 
 LABEL org.opencontainers.image.title="dsec-metrics" \
