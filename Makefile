@@ -88,7 +88,7 @@ pip-audit: reports
 
 osv:
 	$(TOOL) $(OSV_IMAGE) scan source --config osv-scanner.toml \
-		-L uv.lock -L web/pnpm-lock.yaml
+		-L uv.lock -L web/pnpm-lock.yaml -L deploy/docker/caddy/go.mod
 
 gitleaks:
 	$(TOOL) --user "$$(id -u):$$(id -g)" $(GITLEAKS_IMAGE) git --redact --no-banner \

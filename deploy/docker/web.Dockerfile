@@ -13,10 +13,15 @@ RUN --mount=type=secret,id=build_ca,required=false \
 COPY web/ ./
 RUN pnpm run build
 
-FROM caddy:2.11.4@sha256:0c994536bddb66445885237f1a5dcc1916bccea922661c76b4e9fc24061f9b52 AS caddy
-# A plain copy drops the file capability (cap_net_bind_service) the upstream image sets.
-# We listen on 8443 and run with all capabilities dropped, so it is not needed.
-RUN cp /usr/bin/caddy /caddy \
+# Caddy is built from source (deploy/docker/caddy) with a current Go toolchain and
+# patched dependencies; the upstream binary lags on Go security releases.
+FROM golang:1.26.8-trixie@sha256:bdca99a00bc16590cb1a0bb4e698f5fc5d6a64e4d5eef13d9f18a0ee08e5fa65 AS caddy
+ENV CGO_ENABLED=0 GOTOOLCHAIN=local GOFLAGS=-mod=readonly
+WORKDIR /build
+COPY deploy/docker/caddy/go.mod deploy/docker/caddy/go.sum deploy/docker/caddy/main.go ./
+RUN --mount=type=secret,id=build_ca,required=false \
+    if [ -s /run/secrets/build_ca ]; then export SSL_CERT_FILE=/run/secrets/build_ca; fi; \
+    go build -trimpath -ldflags "-s -w" -o /caddy . \
  && mkdir -p /rootfs/run/caddy \
  && chown -R 65532:65532 /rootfs/run/caddy
 
