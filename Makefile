@@ -125,17 +125,20 @@ sbom:
 
 ## ---- run and e2e ------------------------------------------------------------
 
-.PHONY: up down e2e screenshot
+.PHONY: up down demo e2e screenshot
 up: ## Start the Compose stack and wait until it is healthy
 	DSEC_BUILD_CA_FILE="$(CA_FILE)" $(COMPOSE) up -d --build --wait
 
 down: ## Stop the stack (keeps the database volume)
 	$(COMPOSE) down
 
-e2e: up ## Playwright and axe-core against the running stack
+demo: up ## Load 12 months of sample data into the running stack
+	$(COMPOSE) exec -T api dsec-metrics demo > /dev/null
+
+e2e: demo ## Playwright and axe-core against the running stack with sample data
 	cd web && $(PNPM) run e2e
 
-screenshot: up ## Regenerate docs/assets/screenshot.png
+screenshot: demo ## Regenerate docs/assets/screenshot.png
 	cd web && node e2e/screenshot.js
 
 ## ---- local development with reload -----------------------------------------
