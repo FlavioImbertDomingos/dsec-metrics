@@ -1,9 +1,9 @@
 """Worker process.
 
-In M0 the worker proves the plumbing: it waits for the database, then every
-``worker_heartbeat_seconds`` it checks the database, purges expired sessions and old
-sign-in failures, and touches a heartbeat file that the container health check reads.
-Scheduling and collector runs arrive in M1.
+Two things run here. The scheduler (in a background thread) runs each collector instance on
+its cron schedule and re-evaluates the metrics that read from it. The main loop checks
+the database every ``worker_heartbeat_seconds``, purges expired sessions and old sign-in
+failures, and touches the heartbeat file that the container health check reads.
 """
 
 from __future__ import annotations
@@ -21,8 +21,11 @@ from sqlalchemy.exc import SQLAlchemyError
 from dsec_metrics.auth.sessions import purge_expired
 from dsec_metrics.auth.throttle import purge_old_failures
 from dsec_metrics.config import Settings, get_settings, validate_startup
+from dsec_metrics.content import load_content
 from dsec_metrics.db.engine import make_engine, make_session_factory, ping, transaction
 from dsec_metrics.logs import configure_logging
+from dsec_metrics.worker.jobs import JOBS
+from dsec_metrics.worker.scheduler import run_scheduler, sync_schedules
 
 log = logging.getLogger(__name__)
 
@@ -84,4 +87,27 @@ def main() -> None:
     signal.signal(signal.SIGTERM, _handle)
     signal.signal(signal.SIGINT, _handle)
     log.info("worker starting", extra={"event": "worker_start", "mode": settings.mode.value})
-    run(settings, stop)
+    content = load_content(settings.content_dir)
+    engine = make_engine(settings)
+    factory = make_session_factory(engine)
+    try:
+        if content.ok:
+            with transaction(factory) as db:
+                ids = sync_schedules(db, content, datetime.now(UTC))
+            log.info("schedules registered", extra={"event": "schedules", "schedules": ids})
+        else:
+            log.error(
+                "content is invalid; schedules left as they were",
+                extra={"event": "content_invalid"},
+            )
+        scheduler = threading.Thread(
+            target=run_scheduler,
+            args=(factory, JOBS, stop, settings.scheduler_poll_seconds),
+            name="scheduler",
+            daemon=True,
+        )
+        scheduler.start()
+        run(settings, stop)
+        scheduler.join(timeout=settings.scheduler_poll_seconds)
+    finally:
+        engine.dispose()

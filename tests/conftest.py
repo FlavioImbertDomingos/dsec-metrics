@@ -24,6 +24,7 @@ POSTGRES_IMAGE = os.environ.get(
     "postgres:16@sha256:1a6ab3f5345eb6dbe04a1349529caabdb0ab09293a09590fad07b2246bfa4b54",
 )
 TEST_ORIGIN = "https://testserver"
+CONTENT_DIR = Path(__file__).resolve().parents[1] / "content"
 TEST_USER = "tester"
 TEST_PASSWORD = "correct horse battery staple"
 
@@ -71,7 +72,13 @@ def engine(db_settings: Settings) -> Iterator[Engine]:
 def session_factory(engine: Engine) -> sessionmaker[Session]:
     """Clean tables before each test, then hand out sessions."""
     with engine.begin() as conn:
-        conn.execute(text("TRUNCATE auth_failures, sessions, users RESTART IDENTITY CASCADE"))
+        conn.execute(
+            text(
+                "TRUNCATE auth_failures, sessions, users, measurements, record_batches,"
+                " collection_runs, collector_instances, definitions, schedules"
+                " RESTART IDENTITY CASCADE"
+            )
+        )
     return make_session_factory(engine)
 
 

@@ -48,6 +48,7 @@ LABEL org.opencontainers.image.title="dsec-metrics" \
 COPY --from=build /opt/python /opt/python
 COPY --from=build /app/.venv /app/.venv
 COPY --from=build /rootfs/ /
+COPY content /app/content
 
 ENV PATH=/app/.venv/bin:/usr/bin:/bin \
     PYTHONDONTWRITEBYTECODE=1 \

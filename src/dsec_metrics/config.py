@@ -63,12 +63,15 @@ class Settings(BaseSettings):
     login_max_failures_per_user: int = Field(default=5, ge=1)
     login_max_failures_per_source: int = Field(default=20, ge=1)
 
+    content_dir: Path = Path("content")
+
     dev_admin_username: str = "dev-admin"
     dev_admin_password_file: Path | None = None
 
     # A tmpfs mounted at /run/dsec in the container, writable only by the app user.
     worker_heartbeat_file: Path = Path("/run/dsec/worker-heartbeat")
     worker_heartbeat_seconds: int = Field(default=30, ge=1)
+    scheduler_poll_seconds: int = Field(default=30, ge=1)
 
     @field_validator("public_origin")
     @classmethod

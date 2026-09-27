@@ -5,6 +5,7 @@ from __future__ import annotations
 import getpass
 import http.client
 import sys
+from datetime import UTC, date, datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
@@ -21,6 +22,7 @@ from dsec_metrics.config import (
     read_secret_file,
     validate_startup,
 )
+from dsec_metrics.content import Content, cross_check, load_content
 from dsec_metrics.db.engine import make_engine, make_session_factory, transaction
 from dsec_metrics.db.migrate import upgrade
 from dsec_metrics.logs import configure_logging
@@ -193,3 +195,167 @@ def dev_create_user(
     finally:
         engine.dispose()
     typer.echo(f"user {username} {'created' if created else 'updated'}")
+
+
+# Definitions, collection and evaluation (M1).
+
+ContentOpt = Annotated[
+    Path | None, typer.Option("--content", help="Content directory (default: DSEC_CONTENT_DIR).")
+]
+AsOfOpt = Annotated[
+    str | None, typer.Option("--as-of", help="Period end date, YYYY-MM-DD (default: today, UTC).")
+]
+
+
+def _as_of(value: str | None) -> date:
+    if value is None:
+        return datetime.now(UTC).date()
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        raise _fail(f"--as-of must be YYYY-MM-DD, got {value!r}") from None
+
+
+def _validated_content(path: Path | None) -> Content:
+    from dsec_metrics.pipeline import instance_queries
+
+    root = path or get_settings().content_dir
+    content = load_content(root)
+    problems = (
+        [*content.problems, *cross_check(content, instance_queries)]
+        if content.ok
+        else content.problems
+    )
+    if problems:
+        for problem in problems:
+            typer.echo(f"error: {problem}", err=True)
+        raise _fail(f"{len(problems)} problem(s) in {root}")
+    return content
+
+
+@app.command()
+def validate(content_dir: ContentOpt = None) -> None:
+    """Validate every definition and the references between them."""
+    content = _validated_content(content_dir)
+    typer.echo(
+        "ok: "
+        f"{len(content.frameworks)} frameworks, {len(content.metrics)} metrics, "
+        f"{len(content.controls)} controls, {len(content.dashboards)} dashboards, "
+        f"{len(content.collectors)} collectors"
+    )
+
+
+@app.command()
+def collect(
+    instance: str,
+    query: str,
+    as_of: AsOfOpt = None,
+    content_dir: ContentOpt = None,
+) -> None:
+    """Run one collector query once and store the redacted batch."""
+    from dsec_metrics.pipeline import run_collection
+    from dsec_metrics.plugins.sdk.registry import default_secret_resolver
+
+    settings = _settings()
+    content = _validated_content(content_dir)
+    if instance not in content.collectors:
+        raise _fail(f"unknown collector instance {instance!r}")
+    engine = make_engine(settings)
+    try:
+        with transaction(make_session_factory(engine)) as db:
+            result = run_collection(
+                db, content.collectors[instance], query, _as_of(as_of), default_secret_resolver()
+            )
+    finally:
+        engine.dispose()
+    typer.echo(
+        f"{result.status}: {result.records} records in {result.batches} batch(es), "
+        f"{result.pans_masked} card numbers masked"
+    )
+    if result.status != "succeeded":
+        raise _fail(result.error or "collection failed")
+
+
+@app.command()
+def evaluate(
+    metric: Annotated[
+        list[str] | None, typer.Option("--metric", help="Metric id; repeatable.")
+    ] = None,
+    as_of: AsOfOpt = None,
+    content_dir: ContentOpt = None,
+) -> None:
+    """Evaluate metrics from the latest stored batches."""
+    from dsec_metrics.pipeline import evaluate_all, sync_definitions
+
+    settings = _settings()
+    content = _validated_content(content_dir)
+    unknown = [m for m in metric or [] if m not in content.metrics]
+    if unknown:
+        raise _fail(f"unknown metric(s): {', '.join(unknown)}")
+    engine = make_engine(settings)
+    try:
+        with transaction(make_session_factory(engine)) as db:
+            current = sync_definitions(db, content)
+            count = evaluate_all(db, content, current, _as_of(as_of), metric or None)
+    finally:
+        engine.dispose()
+    typer.echo(f"{count} new measurement(s)")
+
+
+@app.command()
+def demo(
+    months: Annotated[
+        int, typer.Option(help="Month-ends to load, ending at the sample anchor.")
+    ] = 12,
+    content_dir: ContentOpt = None,
+) -> None:
+    """Load synthetic sample data and default content, then evaluate every month."""
+    from dsec_metrics.pipeline import run_period
+    from dsec_metrics.plugins.collectors.sample import SampleConfig, month_ends
+    from dsec_metrics.plugins.sdk.registry import default_secret_resolver
+
+    settings = _settings()
+    content = _validated_content(content_dir)
+    sample = next((c for c in content.collectors.values() if c.plugin == "sample"), None)
+    if sample is None:
+        raise _fail("the content has no collector instance using the sample plugin")
+    anchor = SampleConfig.model_validate(sample.config).anchor
+    engine = make_engine(settings)
+    secrets = default_secret_resolver()
+    try:
+        for period in month_ends(anchor, months):
+            with transaction(make_session_factory(engine)) as db:
+                stats = run_period(db, content, period, secrets)
+            typer.echo(
+                f"{period}: {stats['runs']} collections ({stats['failed_runs']} failed), "
+                f"{stats['measurements']} new measurements"
+            )
+    finally:
+        engine.dispose()
+
+
+STATUS_MARK = {"green": "OK ", "amber": "!! ", "red": "XX ", "unknown": "?? "}
+
+
+@app.command()
+def status(as_of: AsOfOpt = None, content_dir: ContentOpt = None) -> None:
+    """Print the metric catalog with the latest value and status of each metric."""
+    from dsec_metrics.pipeline import latest_status
+
+    settings = _settings()
+    content = _validated_content(content_dir)
+    engine = make_engine(settings)
+    try:
+        with make_session_factory(engine)() as db:
+            lines = latest_status(db, content, date.fromisoformat(as_of) if as_of else None)
+    finally:
+        engine.dispose()
+    typer.echo(f"{'metric':<8} {'status':<9} {'value':>10}  {'as of':<10}  name")
+    for line in lines:
+        value = "-" if line.value is None else f"{line.value:,.2f}".rstrip("0").rstrip(".")
+        if line.unit == "percent" and line.value is not None:
+            value += "%"
+        typer.echo(
+            f"{line.metric_id:<8} {STATUS_MARK[line.status]}{line.status:<6} {value:>10}  "
+            f"{line.as_of.isoformat() if line.as_of else '-':<10}  {line.name}"
+        )
