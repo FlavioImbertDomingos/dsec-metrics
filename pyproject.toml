@@ -54,6 +54,8 @@ docs = [
 
 [tool.uv]
 default-groups = ["dev", "docs"]
+# Supply-chain cooldown: ignore releases younger than a week when resolving.
+exclude-newer = "7 days"
 
 [build-system]
 requires = ["hatchling>=1.27"]
@@ -108,6 +110,8 @@ filterwarnings = [
   # Starlette now prefers httpx2 for its test client. Switching needs approval
   # (new dependency); tracked as an open question in docs/plans/m0.md.
   "ignore:Using `httpx` with `starlette.testclient` is deprecated:starlette.exceptions.StarletteDeprecationWarning",
+  # Raised inside starlette.testclient by newer anyio; not our code.
+  "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning:starlette.testclient",
 ]
 markers = ["integration: needs Docker for a Postgres container"]
 
