@@ -39,7 +39,7 @@ dsec-metrics = "dsec_metrics.cli.main:app"
 [dependency-groups]
 dev = [
   "bandit>=1.8",
-  "httpx>=0.28",
+  "httpx2>=2.13",
   "mypy>=1.18",
   "pip-audit>=2.9",
   "pytest>=8.4",
@@ -109,9 +109,6 @@ testpaths = ["tests"]
 addopts = ["-ra", "--strict-markers", "--strict-config"]
 filterwarnings = [
   "error",
-  # Starlette now prefers httpx2 for its test client. Switching needs approval
-  # (new dependency); tracked as an open question in docs/plans/m0.md.
-  "ignore:Using `httpx` with `starlette.testclient` is deprecated:starlette.exceptions.StarletteDeprecationWarning",
   # Raised inside starlette.testclient by newer anyio; not our code.
   "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning:starlette.testclient",
 ]

@@ -20,7 +20,7 @@ The brief fixes most of the stack. M0 review settled the open points: React and 
 | CLI | Typer | 0.27 |
 | Front end | React 19, TypeScript 5 strict, Vite, Tailwind CSS v4, shadcn/ui patterns on Radix, TanStack Query, lucide-react | React 19.3, Vite 8, Tailwind 4.3 |
 | Fonts | Inter, self-hosted through `@fontsource-variable/inter` | 5.3 |
-| Tests | pytest, pytest-cov, Testcontainers, httpx; Vitest, Testing Library, jsdom, Playwright, axe-core | |
+| Tests | pytest, pytest-cov, Testcontainers, httpx2; Vitest, Testing Library, jsdom, Playwright, axe-core | |
 | Lint and format | ruff; ESLint with typescript-eslint (strict type-checked), react-hooks, jsx-a11y (strict); Prettier for the web package | |
 | Docs | MkDocs Material | 9.7 |
 | Node | Node.js 24 LTS | 24 |
@@ -37,4 +37,5 @@ Scheduling (APScheduler), charts (ECharts), tables (TanStack Table), reports (Ji
 
 - Every package outside the brief's list needs approval before it is added. This ADR is the record of what was approved in M0.
 - Material for MkDocs is in maintenance mode and its authors are building Zensical, which reads `mkdocs.yml`. MkDocs 2.0 removes the plugin and theme system Material needs, so `pyproject.toml` caps MkDocs below 2.0. We keep the configuration plain so a switch to Zensical before v1.0 is cheap.
-- Starlette now recommends `httpx2` for its test client. We stay on `httpx` (approved) and filter that one deprecation warning in pytest. Switching is an open question for M1.
+- Starlette now recommends `httpx2` (maintained by the Pydantic team) for its test client. We switched from `httpx` to `httpx2` after M0 review; `httpx` is no longer a dependency.
+- There is no Redis. Postgres holds sessions, sign-in throttling and, from M1, the scheduler's job store; M2's rate limits will also use Postgres. One fewer stateful service to harden, patch, back up and explain in a security review. Revisit only if measured load on those paths needs it.
