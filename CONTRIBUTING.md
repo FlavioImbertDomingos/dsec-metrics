@@ -30,10 +30,12 @@ docker compose up -d --wait
 
 Open <https://localhost> and sign in as `dev-admin` with the password `make dev-secrets` printed. It is also in `deploy/compose/secrets/dev_admin_password`.
 
-For day-to-day work with reload on save:
+For day-to-day work with reload on save, run Postgres in Compose and the API and front end on your machine:
 
 ```sh
-docker compose -f compose.yaml -f compose.dev.yaml up
+make dev-db     # Postgres on 127.0.0.1:5432, migrated, with dev-admin
+make dev-api    # API on 127.0.0.1:8000 with reload
+make dev-web    # Vite on http://localhost:5173, proxying /api to the API
 ```
 
 ## Running the checks
@@ -44,8 +46,8 @@ docker compose -f compose.yaml -f compose.dev.yaml up
 | --- | --- |
 | `make lint` | ruff, mypy --strict, eslint, tsc, prettier --check |
 | `make test` | pytest (with Postgres through Testcontainers) and Vitest, with coverage gates |
-| `make scan` | bandit, semgrep, pip-audit, osv-scanner, gitleaks, zizmor |
-| `make images` | builds both images and scans them with trivy |
+| `make scan` | bandit, semgrep, pip-audit, osv-scanner, gitleaks, zizmor, and a list of active suppressions |
+| `make images` | builds both images, scans them and the Dockerfiles with trivy, writes CycloneDX SBOMs |
 | `make e2e` | brings up the Compose stack and runs Playwright with axe-core |
 | `make docs` | `mkdocs build --strict` |
 

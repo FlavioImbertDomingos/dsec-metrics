@@ -1,0 +1,65 @@
+# The product name shown on the docs site. Keep it in sync with PRODUCT_NAME in
+# src/dsec_metrics/__about__.py.
+site_name: dsec-metrics
+site_description: Self-hosted compliance metrics and audit evidence for data security teams
+site_url: https://flavioimbertdomingos.github.io/dsec-metrics/
+repo_url: https://github.com/FlavioImbertDomingos/dsec-metrics
+repo_name: FlavioImbertDomingos/dsec-metrics
+edit_uri: edit/main/docs/
+copyright: Copyright 2026 The dsec-metrics authors. Apache License 2.0.
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle: { icon: material/weather-night, name: Dark mode }
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle: { icon: material/weather-sunny, name: Light mode }
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Architecture: architecture.md
+  - Deployment:
+      - Docker Compose: deployment/compose.md
+  - Security:
+      - Overview: security/index.md
+      - Threat model: security/threat-model.md
+  - Decisions:
+      - adr/index.md
+      - adr/0001-technology-stack.md
+      - adr/0002-container-base-images.md
+      - adr/0003-compose-topology.md
+      - adr/0004-development-authentication.md
+      - adr/0005-security-gate-policy.md
+      - adr/template.md
+  - Plans:
+      - M0 foundations: plans/m0.md
