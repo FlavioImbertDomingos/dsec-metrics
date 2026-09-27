@@ -22,11 +22,13 @@ Outbound policy (`plugins/sdk/ssrf.py`), applied to every request including each
 - HTTPS only, except hosts in `DSEC_COLLECTOR_ALLOW_HTTP_HOSTS`. No credentials in URLs.
 - Metadata names refused by name. The host is resolved once; every address must pass: no loopback, link-local, multicast, unspecified, reserved, `0.0.0.0/8`, `100.64.0.0/10`, IPv6 site-local, or known metadata addresses, and the same checks on IPv4 addresses embedded in IPv6 (mapped, 6to4, Teredo, NAT64). Private ranges pass, because internal APIs live there; the allowlist limits which names reach them.
 - The connection goes to the checked address. TLS is verified against the host name, which is also sent as SNI and in the `Host` header. This closes the DNS-rebinding gap between checking and connecting.
-- Redirects are not followed. Pagination links must stay on the host of the first request.
+- Host names are limited to letters, digits, hyphens, underscores and dots, so resolvers never see escapes or separators.
+- Redirects are not followed. Pagination links must keep the scheme, host and port of the first request.
+- Collectors cannot set `Host`, `Forwarded`, `X-Forwarded-*`, `X-Original-URL`, `X-Rewrite-URL`, method override headers, or framing headers. A `Host` header would let content authors reach virtual hosts behind a shared proxy at an allowlisted address, and a method override could turn a GET into a write on servers that honour it.
 
-Read-only by construction: the client sends GET, and POST only for read actions a collector declares by name (AWS JSON APIs use POST for reads). Any other method raises before a request is sent.
+Read-only by construction: the client sends GET, and POST only for read actions a collector declares by name (AWS JSON APIs use POST for reads); an `X-Amz-Target` header must match the declared action. Any other method raises before a request is sent. Query APIs that accept writes over GET (IAM) are called only with a fixed list of read actions.
 
-Reliability: timeouts, retries with exponential backoff and jitter on connection errors, 429, 500, 502, 503, 504 and 403 with `x-ratelimit-remaining: 0`, `Retry-After` in seconds up to five minutes, a 20 MB response limit, JSON only, and page and record limits per instance.
+Reliability: per-read timeouts and an overall deadline of four times the timeout for each response, retries with exponential backoff and jitter on connection errors, 429, 500, 502, 503, 504 and 403 with `x-ratelimit-remaining: 0`, `Retry-After` in seconds up to five minutes, a 20 MB response limit, JSON only, and page and record limits per instance.
 
 Transports are injectable. Contract tests replay recorded responses through `FixtureTransport`; CI never calls live services.
 
@@ -43,4 +45,5 @@ In Compose, only the worker joins a network with outbound access (`collectors`);
 - A collector cannot reach anything the operator has not named, and cannot reach metadata or loopback addresses even if named.
 - Operators must list every API host. The collector pages list the hosts each one needs.
 - HTTP/1.1 only, one connection per request. Collector volumes are small (a few thousand requests a day at most), so connection reuse is not needed.
+- Name resolution uses the system resolver, which has no timeout of its own. A resolver that hangs holds the worker until the operating system gives up.
 - Proxies are not supported yet. An operator who needs one can run the worker on a network that routes through a transparent proxy; explicit proxy support can come later as a setting.

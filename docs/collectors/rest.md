@@ -14,7 +14,7 @@ Each entry under `queries` is a query:
 | `cursor_path`, `cursor_param` | Cursor paging: where the next cursor is in the response, and the parameter that sends it back. Paging stops when it is empty or repeats. |
 | `fields` | Keep only these dotted paths from each record. Empty keeps whole records. |
 
-Authentication is one header whose value comes from a secret reference. Other headers can be set, except ones that carry credentials (`Authorization`, `Cookie`, `X-Api-Key`, `Proxy-Authorization`); those must go through `auth`.
+Authentication is one header whose value comes from a secret reference. Other headers can be set, except ones that carry credentials (`Authorization`, `Cookie`, `X-Api-Key`, `Proxy-Authorization`), which must go through `auth`, and ones that change routing or the method, such as `Host` and `X-Forwarded-Host`, which are refused ([Collectors](index.md#outbound-calls)).
 
 ## Minimum permissions
 
