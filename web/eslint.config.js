@@ -34,7 +34,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["*.config.js", "e2e/*.config.js"],
+    files: ["*.config.js", "e2e/*.js"],
     extends: [js.configs.recommended],
     languageOptions: { globals: { process: "readonly", URL: "readonly" } },
   },
