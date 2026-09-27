@@ -1,0 +1,18 @@
+{
+  "Keys": [
+    {
+      "KeyId": "k-1",
+      "KeyArn": "arn:aws:kms:eu-west-1:111122223333:key/k-1"
+    },
+    {
+      "KeyId": "k-2",
+      "KeyArn": "arn:aws:kms:eu-west-1:111122223333:key/k-2"
+    },
+    {
+      "KeyId": "k-3",
+      "KeyArn": "arn:aws:kms:eu-west-1:111122223333:key/k-3"
+    }
+  ],
+  "Truncated": true,
+  "NextMarker": "page-2"
+}

@@ -1,0 +1,30 @@
+{
+  "svc-reporting": {
+    "ListAccessKeysResponse": {
+      "ListAccessKeysResult": {
+        "AccessKeyMetadata": [
+          {
+            "UserName": "svc-reporting",
+            "AccessKeyId": "AKIDEXAMPLEKEY000001",
+            "Status": "Active",
+            "CreateDate": 1735689600.0
+          }
+        ]
+      }
+    }
+  },
+  "import-4111111111111111": {
+    "ListAccessKeysResponse": {
+      "ListAccessKeysResult": {
+        "AccessKeyMetadata": [
+          {
+            "UserName": "import-4111111111111111",
+            "AccessKeyId": "AKIDEXAMPLEKEY000002",
+            "Status": "Inactive",
+            "CreateDate": "2023-06-30T08:00:00Z"
+          }
+        ]
+      }
+    }
+  }
+}

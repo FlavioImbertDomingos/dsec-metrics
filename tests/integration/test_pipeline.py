@@ -26,8 +26,12 @@ from dsec_metrics.pipeline import (
     run_period,
     sync_definitions,
 )
+from dsec_metrics.plugins.sdk import http as sdk_http
 from dsec_metrics.plugins.sdk.registry import default_secret_resolver
+from dsec_metrics.plugins.sdk.testing import FixtureTransport, fixture_policy
 from tests.conftest import CONTENT_DIR
+from tests.contract.cases import CASES
+from tests.contract.cases import PAN as CARD
 
 pytestmark = pytest.mark.integration
 AS_OF = date(2026, 3, 31)
@@ -199,3 +203,29 @@ def test_previous_period_deltas(session_factory: sessionmaker[Session], content:
         assert feb is not None
         assert mar is not None
         assert delta == mar - feb
+
+
+@pytest.mark.parametrize("plugin", sorted(CASES))
+def test_card_numbers_from_http_collectors_are_masked(
+    plugin: str, session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The M4 collectors go through the same pipeline: their recorded responses carry a
+    test card number in a copied field, and it must be stored masked."""
+    case = CASES[plugin]
+    for name, value in case.env.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.setattr(sdk_http, "socket_transport", FixtureTransport(case.routes))
+    monkeypatch.setattr(sdk_http, "default_policy", lambda: fixture_policy(*case.hosts))
+    instance = CollectorInstance(id=f"{plugin}-test", plugin=plugin, config=case.config)
+    with transaction(session_factory) as db:
+        result = run_collection(
+            db, instance, case.pan_query, AS_OF, default_secret_resolver(), actor="test"
+        )
+    assert result.status == "succeeded", result.error
+    assert result.pans_masked >= 1
+    with session_factory() as db:
+        stored = json.dumps(
+            [list(row) for row in db.execute(select(RecordBatchRow.records)).all()], default=str
+        )
+    assert CARD not in stored
+    assert "411111******1111" in stored

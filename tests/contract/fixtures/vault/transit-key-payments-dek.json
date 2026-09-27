@@ -1,0 +1,16 @@
+{
+  "data": {
+    "name": "payments-dek",
+    "type": "aes256-gcm96",
+    "latest_version": 3,
+    "min_decryption_version": 2,
+    "auto_rotate_period": 7776000,
+    "exportable": false,
+    "deletion_allowed": false,
+    "keys": {
+      "1": 1704067200,
+      "2": 1711929600,
+      "3": 1719792000
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "data": {
+    "token/": {
+      "type": "token",
+      "local": false,
+      "config": {
+        "default_lease_ttl": 0,
+        "max_lease_ttl": 0
+      }
+    },
+    "oidc/": {
+      "type": "oidc",
+      "local": false,
+      "config": {
+        "default_lease_ttl": 3600,
+        "max_lease_ttl": 28800
+      }
+    }
+  },
+  "token/": {
+    "type": "token"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "ComplianceByConfigRules": [
+    {
+      "ConfigRuleName": "acm-certificate-expiration-check"
+    }
+  ]
+}

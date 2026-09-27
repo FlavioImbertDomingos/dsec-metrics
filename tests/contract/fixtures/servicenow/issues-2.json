@@ -1,0 +1,12 @@
+{
+  "result": [
+    {
+      "number": "ISS0003",
+      "state": "Open",
+      "priority": "3 - Moderate",
+      "u_business_unit": "cards",
+      "opened_at": "2026-09-01 12:00:00",
+      "short_description": "Key rotation overdue"
+    }
+  ]
+}

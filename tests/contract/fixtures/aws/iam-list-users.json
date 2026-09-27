@@ -1,0 +1,15 @@
+{
+  "ListUsersResponse": {
+    "ListUsersResult": {
+      "Users": [
+        {
+          "UserName": "svc-reporting"
+        },
+        {
+          "UserName": "import-4111111111111111"
+        }
+      ],
+      "IsTruncated": false
+    }
+  }
+}

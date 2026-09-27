@@ -1,0 +1,9 @@
+{
+  "Keys": [
+    {
+      "KeyId": "k-4",
+      "KeyArn": "arn:aws:kms:eu-west-1:111122223333:key/k-4"
+    }
+  ],
+  "Truncated": false
+}

@@ -1,0 +1,44 @@
+{
+  "issues": [
+    {
+      "key": "SEC-101",
+      "fields": {
+        "summary": "Card number 4111111111111111 found in support export",
+        "status": {
+          "name": "In Progress"
+        },
+        "priority": {
+          "name": "High"
+        },
+        "created": "2026-08-01T09:30:00.000+0000",
+        "duedate": "2026-09-15",
+        "labels": [
+          "finding",
+          "pci"
+        ],
+        "customfield_10050": {
+          "value": "cards"
+        }
+      }
+    },
+    {
+      "key": "SEC-102",
+      "fields": {
+        "summary": "Stale service account",
+        "status": {
+          "name": "Open"
+        },
+        "priority": {
+          "name": "Medium"
+        },
+        "created": "2026-09-20T10:00:00.000+0000",
+        "duedate": null,
+        "labels": [],
+        "customfield_10050": {
+          "value": "payments"
+        }
+      }
+    }
+  ],
+  "nextPageToken": "tok-2"
+}

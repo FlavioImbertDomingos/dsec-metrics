@@ -1,0 +1,11 @@
+{
+  "data": {
+    "name": "legacy-4111111111111111",
+    "type": "aes256-gcm96",
+    "latest_version": 1,
+    "min_decryption_version": 1,
+    "keys": {
+      "1": 1640995200
+    }
+  }
+}

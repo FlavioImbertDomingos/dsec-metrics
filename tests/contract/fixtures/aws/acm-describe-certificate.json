@@ -1,0 +1,22 @@
+{
+  "arn:aws:acm:eu-west-1:111122223333:certificate/c-1": {
+    "Certificate": {
+      "DomainName": "portal.example.test",
+      "Status": "ISSUED",
+      "Type": "AMAZON_ISSUED",
+      "InUseBy": [
+        "arn:aws:elasticloadbalancing:eu-west-1:111122223333:loadbalancer/app/portal/1"
+      ],
+      "NotAfter": 1792022400.0
+    }
+  },
+  "arn:aws:acm:eu-west-1:111122223333:certificate/c-2": {
+    "Certificate": {
+      "DomainName": "old.example.test",
+      "Status": "EXPIRED",
+      "Type": "IMPORTED",
+      "InUseBy": [],
+      "NotAfter": 1788220800.0
+    }
+  }
+}

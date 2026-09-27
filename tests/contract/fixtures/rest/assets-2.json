@@ -1,0 +1,18 @@
+{
+  "data": {
+    "assets": [
+      {
+        "id": "a-3",
+        "tier": 3,
+        "owner": {
+          "team": "cards"
+        },
+        "encrypted": true,
+        "notes": ""
+      }
+    ]
+  },
+  "meta": {
+    "next": null
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "ComplianceByConfigRules": [
+    {
+      "ConfigRuleName": "kms-cmk-not-scheduled-for-deletion",
+      "Compliance": {
+        "ComplianceType": "COMPLIANT"
+      }
+    },
+    {
+      "ConfigRuleName": "s3-bucket-server-side-encryption-enabled",
+      "Compliance": {
+        "ComplianceType": "NON_COMPLIANT",
+        "ComplianceContributorCount": {
+          "CappedCount": 3,
+          "CapExceeded": false
+        }
+      }
+    }
+  ],
+  "NextToken": "t-2"
+}

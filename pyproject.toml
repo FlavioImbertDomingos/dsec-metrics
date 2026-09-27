@@ -42,8 +42,14 @@ Issues = "https://github.com/FlavioImbertDomingos/dsec-metrics/issues"
 dsec-metrics = "dsec_metrics.cli.main:app"
 
 [project.entry-points."dsec_metrics.collectors"]
+aws = "dsec_metrics.plugins.collectors.aws:AwsCollector"
 file = "dsec_metrics.plugins.collectors.file:FileCollector"
+github = "dsec_metrics.plugins.collectors.github:GithubCollector"
+jira = "dsec_metrics.plugins.collectors.jira:JiraCollector"
+rest = "dsec_metrics.plugins.collectors.rest:RestCollector"
 sample = "dsec_metrics.plugins.collectors.sample:SampleCollector"
+servicenow = "dsec_metrics.plugins.collectors.servicenow:ServiceNowCollector"
+vault = "dsec_metrics.plugins.collectors.vault:VaultCollector"
 
 [project.entry-points."dsec_metrics.renderers"]
 csv = "dsec_metrics.plugins.renderers.csv:CsvRenderer"

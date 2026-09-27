@@ -1,0 +1,12 @@
+{
+  "CertificateSummaryList": [
+    {
+      "CertificateArn": "arn:aws:acm:eu-west-1:111122223333:certificate/c-1",
+      "DomainName": "portal.example.test"
+    },
+    {
+      "CertificateArn": "arn:aws:acm:eu-west-1:111122223333:certificate/c-2",
+      "DomainName": "old.example.test"
+    }
+  ]
+}

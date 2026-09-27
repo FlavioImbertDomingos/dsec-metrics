@@ -1,0 +1,11 @@
+{
+  "data": {
+    "file/": {
+      "type": "file",
+      "local": false,
+      "options": {
+        "file_path": "/vault/audit/audit.log"
+      }
+    }
+  }
+}

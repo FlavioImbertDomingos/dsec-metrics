@@ -37,7 +37,16 @@ def sample() -> SampleCollector:
 
 
 def test_registry() -> None:
-    assert {"file", "sample"} <= set(plugin_names(COLLECTORS))
+    assert set(plugin_names(COLLECTORS)) == {
+        "aws",
+        "file",
+        "github",
+        "jira",
+        "rest",
+        "sample",
+        "servicenow",
+        "vault",
+    }
     assert collector_class("sample") is SampleCollector
     with pytest.raises(PluginError):
         collector_class("nope")

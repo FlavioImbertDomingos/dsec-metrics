@@ -1,0 +1,20 @@
+{
+  "result": [
+    {
+      "number": "ISS0001",
+      "state": "Open",
+      "priority": "2 - High",
+      "u_business_unit": "cards",
+      "opened_at": "2026-07-01 08:00:00",
+      "short_description": "PAN 4111111111111111 in ticket"
+    },
+    {
+      "number": "ISS0002",
+      "state": "Closed",
+      "priority": "4 - Low",
+      "u_business_unit": "payments",
+      "opened_at": "2026-05-12 11:00:00",
+      "short_description": "Access review late"
+    }
+  ]
+}

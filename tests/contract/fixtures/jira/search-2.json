@@ -1,0 +1,22 @@
+{
+  "issues": [
+    {
+      "key": "SEC-103",
+      "fields": {
+        "summary": "Missing encryption on backup",
+        "status": {
+          "name": "Done"
+        },
+        "priority": {
+          "name": "Low"
+        },
+        "created": "not a date",
+        "duedate": null,
+        "labels": [
+          "finding"
+        ],
+        "customfield_10050": null
+      }
+    }
+  ]
+}

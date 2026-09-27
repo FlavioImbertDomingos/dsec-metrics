@@ -1,0 +1,11 @@
+[
+  {
+    "number": 12,
+    "state": "open",
+    "created_at": "2026-06-30T10:00:00Z",
+    "rule": {
+      "id": "js/xss",
+      "security_severity_level": "medium"
+    }
+  }
+]
