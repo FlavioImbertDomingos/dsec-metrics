@@ -1,0 +1,1 @@
+"""Notifier plugins (M6)."""
