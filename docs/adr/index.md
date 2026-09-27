@@ -13,3 +13,6 @@ Each significant decision is recorded here with its context, the decision and it
 | [0007](0007-worker-scheduler.md) | Worker scheduler without APScheduler | accepted, pending confirmation |
 | [0008](0008-redaction-pipeline.md) | Redaction pipeline | accepted |
 | [0009](0009-read-api-and-dashboards.md) | Read API, dashboard aggregation and rate limits | accepted |
+| [0010](0010-pdf-rendering.md) | PDF rendering and the container image | accepted, open question |
+| [0011](0011-evidence-packages.md) | Evidence packages, signing and verification | accepted |
+| [0012](0012-audit-log-and-roles.md) | Hash-chained audit log, roles and auditor access | accepted |

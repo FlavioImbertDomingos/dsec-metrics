@@ -4,7 +4,7 @@
 
 dsec-metrics is a self-hosted compliance metrics and audit evidence platform for data security teams. It turns agreed metric and control definitions, kept as YAML in version control, into measured results, shows them on one dashboard per audience, and builds evidence packages that an auditor can verify on their own: every number links back to the definition version, the query and the hashed source data behind it, and every package carries a signed SHA-256 manifest. It runs entirely inside your network, behind your identity provider, with read-only collectors and no telemetry.
 
-> Status: pre-alpha. M0 to M2 are in place: the Compose stack, development sign-in, CI with every security gate, definitions as code, the evaluator, redaction, the `file` and `sample` collectors, and the three audience dashboards with drill-down to source records. Audit reports arrive in M3. See [CLAUDE.md](CLAUDE.md) for the full brief and milestones.
+> Status: pre-alpha. M0 to M3 are in place: the Compose stack, development sign-in, CI with every security gate, definitions as code, the evaluator, redaction, the `file` and `sample` collectors, the three audience dashboards with drill-down to source records, signed evidence packages with an independent verifier, auditor access and a hash-chained audit log. Real collectors arrive in M4. See [CLAUDE.md](CLAUDE.md) for the full brief and milestones.
 
 ## Quick start
 
@@ -43,6 +43,8 @@ Development sign-in exists only in development mode. The app refuses to start in
 - [Definition language](docs/definitions.md)
 - [Plugin SDK](docs/plugins.md)
 - [Dashboards and the read API](docs/dashboards.md)
+- [Reports and evidence packages](docs/reports.md)
+- [Audit log and auditors](docs/audit.md)
 - [Architecture decision records](docs/adr/index.md)
 - [Threat model](docs/security/threat-model.md)
 - [Deploying with Docker Compose](docs/deployment/compose.md)

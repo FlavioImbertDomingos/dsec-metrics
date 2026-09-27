@@ -49,13 +49,15 @@ The stack reads these files from `deploy/compose/secrets/`:
 | `dev_ca.crt` | api, worker, migrate | CA that signed the Postgres certificate |
 | `db_tls.crt`, `db_tls.key` | postgres | Postgres server certificate, SAN `postgres` |
 | `web_tls.crt`, `web_tls.key` | web | Certificate users see, SAN `DSEC_HOSTNAME` |
+| `report_signing_key` | api, worker | Ed25519 private key that signs evidence packages |
 
 For development, `make dev-secrets` creates all of them. For a shared or production host:
 
 1. Issue the web certificate from your company CA for the real host name, with the full chain in `web_tls.crt`.
 2. Issue the Postgres certificate from an internal CA (SAN `postgres`) and put that CA in `dev_ca.crt`. The file name stays the same in M0; it becomes `db_ca.crt` in M5.
 3. Generate the database password with at least 32 random characters.
-4. Keep the directory owned by root with mode 700. The files must stay readable by UID 999 (Postgres) and UID 65532 (app and Caddy); mode 644 inside the 700 directory does that.
+4. Create the report signing key once with `dsec-metrics keys generate --private-key report_signing_key --public-key report_signing_key.pub` (or `openssl genpkey -algorithm ed25519` with OpenSSL 3), keep an offline backup, and give auditors the fingerprint that `keys generate` prints. See [Reports](../reports.md#the-signing-key).
+5. Keep the directory owned by root with mode 700. The files must stay readable by UID 999 (Postgres) and UID 65532 (app and Caddy); mode 644 inside the 700 directory does that.
 
 ## Start, stop, upgrade
 

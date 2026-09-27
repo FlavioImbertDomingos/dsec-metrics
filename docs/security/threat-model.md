@@ -1,12 +1,12 @@
 # Threat model
 
 - Method: STRIDE per element of the data-flow diagram
-- Status: updated at the end of M2
-- Next review: end of M3, and at the end of every milestone after that
+- Status: updated at the end of M3
+- Next review: end of M4, and at the end of every milestone after that
 
 ## Scope and assumptions
 
-This version covers what exists after M2: the Compose stack, development sign-in, the images, the CI and release pipelines, definitions as code, the `file` and `sample` collectors, the redaction pipeline, the evaluator, stored measurements, the worker's scheduler, the read API and the dashboards. Planned components are listed at the end so later milestones start from a known baseline.
+This version covers what exists after M3: the Compose stack, development sign-in with roles, the images, the CI and release pipelines, definitions as code, the `file` and `sample` collectors, the redaction pipeline, the evaluator, stored measurements, the worker's scheduler, the read API, the dashboards, evidence packages with their signing key, auditor access and the audit log. Planned components are listed at the end so later milestones start from a known baseline.
 
 Assumptions:
 
@@ -25,8 +25,8 @@ Assumptions:
 | Collector credentials (M4) | Read access to cloud accounts, Vault, ticketing and source control |
 | Session tokens | Impersonation of any user, later including admins and auditors |
 | Password hashes (development only) | Offline cracking |
-| Signing key for evidence packages (M3) | Forged packages that verify |
-| The audit log (M3) | Hides tampering if it can be changed |
+| Signing key for evidence packages | Forged packages that verify |
+| The audit log | Hides tampering if it can be changed |
 | Release images and their signatures | A malicious image running inside a bank's network |
 
 ## Data-flow diagram and trust boundaries
@@ -108,7 +108,21 @@ flowchart LR
 | T10 | Dashboards | A filtered view shows unfiltered numbers and misleads a committee | A filter is honoured only when a stored slice matches exactly; otherwise the response says it was ignored and the UI shows a note | None known |
 | T11 | Front end | Script injection through record contents or definitions | Values are rendered as text by React; no HTML from the API is injected; charts draw on canvas with canvas tooltips; CSP blocks inline scripts and styles, and the e2e suite fails on any console error | None known |
 | S5 | Rate limit keys | Evading per-session limits with made-up cookies | Every request also counts against its address; session keys are hashes of the cookie | Address-level limits only for callers that rotate addresses |
-| R2 | Reads | No record of who looked at what | Access logs from the proxy; sign-in events | Per-read audit events arrive with the audit log in M3, starting with auditor downloads |
+| R2 | Reads | No record of who looked at what | Access logs from the proxy; every package download and sign-in is in the hash-chained audit log (M3) | Dashboard reads are not in the audit log, only in proxy logs |
+
+## STRIDE: evidence packages, auditors and the audit log (M3)
+
+| # | Element | Threat | Mitigation in place | Residual risk |
+| --- | --- | --- | --- | --- |
+| T12 | Packages | A file is changed after signing | Manifest lists SHA-256 and size of every file; Ed25519 signature over the manifest; `verify` fails on any change, missing or extra file; tests change one byte and expect failure | None known when the verifier pins the key |
+| S6 | Packages | A forged package signed with another key | The fingerprint is on the cover and in the manifest; `verify --fingerprint` or `--public-key` pins it; unpinned verification says so | An auditor who does not pin the key. The docs tell them to get the fingerprint separately |
+| I10 | Signing key | Key theft allows forged packages | Docker secret, never in the database or image; `keys generate` writes it with mode 0600 | The key is a file readable by the app user. M5 adds key provider plugins so it never sits on disk |
+| E4 | Auditor access | An auditor sees packages outside their scope | Grants name frameworks, a period and an expiry; every package route checks them; staff routes return 403 to auditors; tests cover framework, period and expiry | Packages covering several frameworks are visible to an auditor granted any one of them |
+| S7 | Auditor links | A link is forwarded to someone else | Links are bound to one auditor and still need their sign-in; 256-bit tokens stored as hashes; expiry capped at the grant; every use is logged | None known |
+| R3 | Audit log | A user or operator denies an action, or history is rewritten | Hash chain over every entry; append-only trigger; advisory lock keeps one chain; `audit verify` locates the first break; entries also go to stdout for the SIEM | A database administrator can disable the trigger and recompute every later hash. Keeping the head hash outside the database (the SIEM) detects that |
+| D4 | Report generation | Large reports tie up the API | Generation is limited to authors; periods are at most two years; rate limits apply | A framework report with many controls and large batches takes seconds. M4 moves generation to the worker if it grows |
+| T13 | Spreadsheets | Formula injection through record contents | XLSX cells written as text; CSV values starting with `=`, `+`, `-`, `@` get a leading apostrophe | None known |
+| I11 | PDF rendering | The renderer fetches remote or local resources named in data | The template escapes all data; WeasyPrint gets a URL fetcher that refuses every URL | None known |
 
 Tampered collector inputs (a source system returning wrong data) are outside what the platform can detect. The platform's job is to show which batch, from which source and when, produced each number, so a wrong input can be traced.
 
@@ -127,8 +141,6 @@ Tampered collector inputs (a source system returning wrong data) are outside wha
 | Component | Milestone | Main threats to design for |
 | --- | --- | --- |
 | HTTP collectors | M4 | Credential theft, SSRF through the `rest` collector, collectors with write access |
-| Evidence packages and signing key | M3 | Key theft, forged or altered packages, auditor link sharing |
-| Audit log | M3 | Deletion or rewriting of history |
 | OIDC and RBAC | M5 | Token replay, role confusion, business-unit scope bypass |
 | Notifiers | M6 | Data leaking to chat tools, webhook SSRF |
 
@@ -137,5 +149,6 @@ Tampered collector inputs (a source system returning wrong data) are outside wha
 | Date | Milestone | Change |
 | --- | --- | --- |
 | 2026-09-26 | M0 | First draft |
+| 2026-09-27 | M3 | Added packages, signing, auditors and the audit log (T12, T13, S6, S7, I10, I11, E4, R3, D4); R2 updated |
 | 2026-09-27 | M2 | Added the read API and dashboards (I8, I9, T10, T11, S5, R2); rate limits now close D1 |
 | 2026-09-27 | M1 | Added definitions, collection, redaction, evaluation and scheduler threats (T5 to T9, I5 to I7, D3, E3) |
