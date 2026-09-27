@@ -31,7 +31,7 @@ Choices that differ from the brief's table:
 - TypeScript stays on 5.9 as the brief says, although TypeScript 7 has shipped. Moving to 7 is a separate decision.
 - SQLAlchemy resolves to 2.0.x under the one-week cooldown (see ADR-0005); 2.1 will arrive through Dependabot.
 
-Scheduling (APScheduler), charts (ECharts), tables (TanStack Table), reports (Jinja2, WeasyPrint, openpyxl), crypto (`cryptography`) and OIDC (Authlib) are named in the brief but not installed until the milestone that uses them.
+Scheduling (APScheduler, later replaced by an in-house scheduler; see ADR-0007), charts (ECharts), tables (TanStack Table), reports (Jinja2, WeasyPrint, openpyxl), crypto (`cryptography`) and OIDC (Authlib) are named in the brief but not installed until the milestone that uses them.
 
 ## Consequences
 

@@ -48,6 +48,8 @@ nav:
   - Home: index.md
   - Getting started: getting-started.md
   - Architecture: architecture.md
+  - Definition language: definitions.md
+  - Plugin SDK: plugins.md
   - Deployment:
       - Docker Compose: deployment/compose.md
   - Security:
@@ -60,6 +62,10 @@ nav:
       - adr/0003-compose-topology.md
       - adr/0004-development-authentication.md
       - adr/0005-security-gate-policy.md
+      - adr/0006-definition-language-and-versioning.md
+      - adr/0007-worker-scheduler.md
+      - adr/0008-redaction-pipeline.md
       - adr/template.md
   - Plans:
       - M0 foundations: plans/m0.md
+      - M1 definitions and evaluator: plans/m1.md

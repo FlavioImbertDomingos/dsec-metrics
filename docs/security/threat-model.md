@@ -1,12 +1,12 @@
 # Threat model
 
 - Method: STRIDE per element of the data-flow diagram
-- Status: first draft, end of M0
-- Next review: end of M1, and at the end of every milestone after that
+- Status: updated at the end of M1
+- Next review: end of M2, and at the end of every milestone after that
 
 ## Scope and assumptions
 
-This draft covers what exists after M0 (the Compose stack, development sign-in, the images and the CI and release pipelines) and lists the planned components so later milestones start from a known baseline.
+This version covers what exists after M1: the Compose stack, development sign-in, the images, the CI and release pipelines, definitions as code, the `file` and `sample` collectors, the redaction pipeline, the evaluator, stored measurements and the worker's scheduler. Planned components are listed at the end so later milestones start from a known baseline.
 
 Assumptions:
 
@@ -19,7 +19,9 @@ Assumptions:
 
 | Asset | Why it matters |
 | --- | --- |
-| Measured results and evidence (M1 onward) | Wrong or altered numbers mislead auditors and risk committees |
+| Measured results and evidence | Wrong or altered numbers mislead auditors and risk committees |
+| Definitions in `content/` | Whoever changes a threshold or filter changes what the committee sees |
+| Collected records | Can include personal data and, before redaction, cardholder data |
 | Collector credentials (M4) | Read access to cloud accounts, Vault, ticketing and source control |
 | Session tokens | Impersonation of any user, later including admins and auditors |
 | Password hashes (development only) | Offline cracking |
@@ -50,6 +52,10 @@ flowchart LR
   web -- "2 HTTP" --> api
   api -- "3 TLS" --> pg
   worker -- "4 TLS" --> pg
+  content[/content YAML/]
+  files[/Collector files/]
+  content -- "9 read" --> worker
+  files -- "10 read" --> worker
   worker -. "5 HTTPS, M4" .-> src
   api -. "6 OIDC, M5" .-> idp
   gh -- "7 push, sign" --> ghcr
@@ -78,6 +84,23 @@ flowchart LR
 | E1 | Containers | Container escape or privilege escalation | Non-root, read-only root filesystem, all capabilities dropped (Postgres keeps the five its entrypoint needs), `no-new-privileges`, no shell in our images | Kernel vulnerabilities are out of scope |
 | E2 | Authorization | A new route ships without a check | One policy module; CI fails if a route has no policy or lacks allowed and denied tests | None known |
 
+## STRIDE: definitions, collection and evaluation (M1)
+
+| # | Element | Threat | Mitigation in place | Residual risk |
+| --- | --- | --- | --- | --- |
+| T5 | Definition files | Code execution through YAML | Safe loader only, duplicate keys rejected, 1 MB file limit, strict Pydantic models; no expression language, `eval`, `exec` or pickle anywhere | None known |
+| T6 | Definition files | A quiet threshold change hides a red metric | Definitions live in Git and change through review; each distinct definition is stored as a new version with its SHA-256; measurements record the version and hash they used; old measurements are never updated | Someone with write access to both the repository and the deployment can change a definition without review. M3's audit log and M6's editor record who synced what |
+| T7 | Measurements | Altered numbers in the database | Insert-only by design, unique per metric, definition hash, date and slice; each row stores the hashes of its input batches so the number can be recomputed | A database administrator can still edit rows. M3 adds the hash-chained audit log and signed packages that make edits detectable |
+| T8 | Scheduler table | Code execution through stored job data | Rows name a job from a fixed registry and carry string arguments only; nothing is imported or deserialized into objects. APScheduler was removed for this reason (ADR-0007, CVE-2026-31072) | Someone with write access to the table can trigger an allowed job early. The effect is an extra collection run |
+| T9 | `file` collector | Reading files outside its directory | Relative paths only, no `..`, and the resolved path must stay inside `base_dir`; 50 MB limit | Files inside `base_dir` are trusted as data. Their contents go through redaction like any other source |
+| I5 | Collected records | Cardholder data stored | Redaction runs in the pipeline before hashing and storage and cannot be skipped by a plugin: sensitive fields dropped, Luhn-valid 13 to 19 digit runs masked to first six and last four in values, keys, integers and nested data. A test pushes card numbers through every collector path and scans every application table | Numbers with other separators or split across fields. Collector authors must declare such fields sensitive (ADR-0008) |
+| I6 | Collector errors | Secrets or record data in error messages | `CollectorError` and `SecretError` messages are written to be safe to log; scheduled job failures store only the exception type | A third-party plugin that puts data in its messages. The plugin guide says not to; M4 adds a review checklist |
+| I7 | Secret references | Secrets in definitions or the database | Config holds `env://` or `file://` references; the resolver refuses plain values | A plugin config model that accepts a plain string where a reference was meant. Built-in models are reviewed; M4 adds a `SecretRef` type |
+| D3 | Evaluation | Large inputs slow the worker | 50 MB file limit, 1 MB definition limit; evaluation is linear in the number of records | No limit yet on records per batch from future HTTP collectors. M4 adds one in the SDK |
+| E3 | Collectors | A collector with write access to a source | Built-in collectors only read; `required_permissions` documents read-only scopes | Operators can still grant broader credentials than documented. M4's permission docs list the minimum |
+
+Tampered collector inputs (a source system returning wrong data) are outside what the platform can detect. The platform's job is to show which batch, from which source and when, produced each number, so a wrong input can be traced.
+
 ## STRIDE: build and release pipeline
 
 | # | Threat | Mitigation in place | Residual risk |
@@ -92,8 +115,8 @@ flowchart LR
 
 | Component | Milestone | Main threats to design for |
 | --- | --- | --- |
-| Collectors and redaction | M1, M4 | Credential theft, SSRF through the `rest` collector, card data stored unmasked, collectors with write access |
-| Evaluator and measurements | M1 | Tampered inputs producing wrong statuses, silent `unknown` shown as green |
+| HTTP collectors | M4 | Credential theft, SSRF through the `rest` collector, collectors with write access |
+| Dashboards and read API | M2 | Scope bypass between business units, `unknown` shown as green, scraping without rate limits |
 | Evidence packages and signing key | M3 | Key theft, forged or altered packages, auditor link sharing |
 | Audit log | M3 | Deletion or rewriting of history |
 | OIDC and RBAC | M5 | Token replay, role confusion, business-unit scope bypass |
@@ -104,3 +127,4 @@ flowchart LR
 | Date | Milestone | Change |
 | --- | --- | --- |
 | 2026-09-26 | M0 | First draft |
+| 2026-09-27 | M1 | Added definitions, collection, redaction, evaluation and scheduler threats (T5 to T9, I5 to I7, D3, E3) |

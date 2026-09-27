@@ -18,6 +18,15 @@ docker compose up -d --wait
 
 Open <https://localhost> and sign in as `dev-admin`.
 
+## Load the demo data
+
+```sh
+docker compose exec api dsec-metrics demo
+docker compose exec api dsec-metrics status
+```
+
+`demo` syncs the default content in `content/`, runs the `sample` collector for the last 12 month-ends and evaluates every metric for each month. It takes a few seconds and is safe to run again: stored measurements are never duplicated or changed. `status` prints each metric's latest value and status. `dsec-metrics validate` checks the YAML under `content/` after you edit it; see [the definition language](definitions.md).
+
 ## The certificate warning
 
 The stack serves a certificate signed by the development CA that `make dev-secrets` created. You have two options:
@@ -33,7 +42,7 @@ The CA is name-constrained to `localhost`, `postgres`, `127.0.0.1` and your `DSE
 | --- | --- |
 | `web` | Caddy: TLS, security headers, the built front end, and a proxy for `/api` |
 | `api` | FastAPI on the internal network only |
-| `worker` | Background process; in M0 it checks the database and purges expired sessions |
+| `worker` | Background process: runs each collector instance on its schedule, evaluates the metrics that use it, and purges expired sessions |
 | `migrate` | Runs database migrations and creates the dev admin, then exits |
 | `postgres` | PostgreSQL 16, reachable only over TLS on the internal network |
 

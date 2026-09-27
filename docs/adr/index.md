@@ -9,3 +9,6 @@ Each significant decision is recorded here with its context, the decision and it
 | [0003](0003-compose-topology.md) | Compose topology, TLS and the reverse proxy | accepted |
 | [0004](0004-development-authentication.md) | Development authentication and server-side sessions | accepted |
 | [0005](0005-security-gate-policy.md) | Security gate policy and suppressions | accepted |
+| [0006](0006-definition-language-and-versioning.md) | Definition language and versioning | accepted |
+| [0007](0007-worker-scheduler.md) | Worker scheduler without APScheduler | accepted, pending confirmation |
+| [0008](0008-redaction-pipeline.md) | Redaction pipeline | accepted |
