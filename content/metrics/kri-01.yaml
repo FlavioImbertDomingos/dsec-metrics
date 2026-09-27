@@ -1,0 +1,56 @@
+# Default data security metric pack. Thresholds are starting points; tune them to
+# your risk appetite and record the change through review.
+id: KRI-01
+name: Past-due high-severity findings
+type: kri
+question: Are serious findings being fixed by their due date?
+owner: vulnerability-management-lead
+audience:
+- risk_committee
+- management
+- team_operations
+source:
+  collector: sample
+  query: findings
+evaluation:
+  kind: count
+  filters:
+  - field: status
+    op: eq
+    value: open
+  - field: severity
+    op: in
+    value:
+    - critical
+    - high
+  - field: days_past_due
+    op: gt
+    value: 0
+  group_by:
+  - business_unit
+frequency: monthly
+thresholds:
+  green:
+    max: 5
+  amber:
+    max: 8
+  red:
+    above: 8
+action_when_red: Owners present a remediation date to the risk committee; items past due by 30 days go
+  to the business unit CIO.
+frameworks:
+- pci-dss-4.0.1:6.3.1
+- nist-csf-2.0:ID.RA-01
+- iso-27001-2022:A.8.8
+- soc2-tsc:CC7.1
+unit: count
+baseline:
+  value: 6
+  method: count from findings tracker
+  date: '2025-10-31'
+target: 2
+approved_by:
+- data-security-manager
+- technology-risk
+- internal-audit
+review_by: '2027-03-31'

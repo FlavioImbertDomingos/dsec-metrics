@@ -1,0 +1,59 @@
+# PCI DSS v4.0.1: requirement IDs used by the default controls, with short titles
+# written by the project. The standard's text is copyrighted and is not included.
+id: pci-dss-4.0.1
+name: PCI DSS
+version: 4.0.1
+source_url: https://www.pcisecuritystandards.org/
+requirements:
+- ref: 3.2.1
+  short_title: Account data storage is kept to a minimum
+- ref: 3.3.1
+  short_title: Sensitive authentication data is not kept after authorization
+- ref: 3.4.1
+  short_title: PAN is masked when displayed
+- ref: 3.5.1
+  short_title: PAN is unreadable wherever it is stored
+- ref: 3.6.1
+  short_title: Keys that protect account data are protected
+- ref: 3.7.1
+  short_title: Strong keys are generated
+- ref: 3.7.2
+  short_title: Keys are distributed securely
+- ref: 3.7.3
+  short_title: Keys are stored securely
+- ref: 3.7.4
+  short_title: Key changes at end of cryptoperiod
+- ref: 3.7.5
+  short_title: Retired or compromised keys are replaced
+- ref: 4.2.1
+  short_title: Strong cryptography protects PAN in transit
+- ref: 4.2.1.1
+  short_title: Inventory of trusted keys and certificates is kept
+- ref: 6.3.1
+  short_title: Security vulnerabilities are identified and ranked
+- ref: 6.3.3
+  short_title: Security patches are installed on time
+- ref: 7.2.1
+  short_title: Access control model is defined
+- ref: 7.2.4
+  short_title: User accounts and access are reviewed periodically
+- ref: 7.2.5
+  short_title: System and application accounts get least privilege
+- ref: 8.3.1
+  short_title: User access is authenticated
+- ref: 8.4.1
+  short_title: MFA for administrative access into the CDE
+- ref: 8.4.2
+  short_title: MFA for all access into the CDE
+- ref: 8.6.3
+  short_title: Passwords for system accounts are protected and changed
+- ref: 10.2.1
+  short_title: Audit logs are enabled
+- ref: 11.3.1
+  short_title: Internal vulnerability scans run quarterly
+- ref: 12.3.3
+  short_title: Cryptographic inventory reviewed annually
+- ref: 12.5.2
+  short_title: Scope is documented and confirmed annually
+- ref: 12.10.1
+  short_title: Incident response plan exists and is ready

@@ -1,0 +1,48 @@
+# Default data security metric pack. Thresholds are starting points; tune them to
+# your risk appetite and record the change through review.
+id: KRI-02
+name: Exceptions per 100 control reviews
+type: kri
+question: Are we granting exceptions more often than we should?
+owner: data-security-exceptions-lead
+audience:
+- risk_committee
+- management
+source:
+  collector: sample
+  query: review_activity
+evaluation:
+  kind: ratio
+  numerator:
+  - field: record_type
+    op: eq
+    value: exception
+  denominator:
+  - field: record_type
+    op: eq
+    value: review
+  scale: 100
+frequency: monthly
+thresholds:
+  green:
+    max: 6
+  amber:
+    max: 8
+  red:
+    above: 8
+action_when_red: Review the exception approval criteria with the control owners and technology risk.
+frameworks:
+- nist-csf-2.0:GV.RM-06
+- soc2-tsc:CC3.2
+- iso-27001-2022:A.5.36
+unit: ratio
+baseline:
+  value: 8.5
+  method: review log sample
+  date: '2025-10-31'
+target: 5
+approved_by:
+- data-security-manager
+- technology-risk
+- internal-audit
+review_by: '2027-03-31'

@@ -1,0 +1,37 @@
+# Dashboard layout. Widgets read metrics by id; every number links to its source.
+id: risk-committee
+title: Risk committee
+audience: risk_committee
+refresh: monthly
+layout:
+- widget: rag_list
+  title: Key risk indicators
+  metrics:
+  - KRI-01
+  - KRI-02
+  - KRI-03
+  - KRI-04
+  - KRI-07
+  - KRI-08
+  - KCI-01
+  - KCI-02
+  width: 12
+- widget: trend
+  title: Exceptions open more than 180 days
+  metric: KRI-03
+  periods: 12
+  width: 6
+- widget: heatmap
+  title: Status by business unit
+  rows: business_unit
+  columns: metric
+  value: status
+  metrics:
+  - KRI-01
+  - KRI-03
+  - KRI-04
+  - KRI-07
+  - KRI-08
+  - KCI-01
+  - KCI-02
+  width: 6

@@ -1,0 +1,36 @@
+# Certificate management controls.
+- id: DS-CM-01
+  name: Certificate inventory is kept
+  owner: pki-lead
+  description: Every server certificate is inventoried with owner and expiry.
+  requirements:
+  - pci-dss-4.0.1:4.2.1.1
+  - iso-27001-2022:A.5.9
+  metrics: []
+  evidence:
+  - collector: sample
+    query: certificates
+    retain_days: 400
+- id: DS-CM-02
+  name: Certificates are renewed before expiry
+  owner: pki-lead
+  description: Certificates renew automatically at least 30 days before expiry.
+  requirements:
+  - pci-dss-4.0.1:4.2.1
+  - nist-csf-2.0:PR.DS-02
+  - soc2-tsc:CC6.7
+  metrics:
+  - KRI-05
+  evidence:
+  - collector: sample
+    query: certificates
+    retain_days: 400
+- id: DS-CM-03
+  name: Only strong protocols and cipher suites are allowed
+  owner: pki-lead
+  description: TLS 1.2 or later with approved suites on every in-scope endpoint.
+  requirements:
+  - pci-dss-4.0.1:4.2.1
+  - pci-dss-4.0.1:12.3.3
+  metrics: []
+  evidence: []

@@ -1,0 +1,51 @@
+# Default data security metric pack. Thresholds are starting points; tune them to
+# your risk appetite and record the change through review.
+id: KPI-03
+name: Findings closed on time
+type: kpi
+question: Are findings closed by their due date?
+owner: vulnerability-management-lead
+audience:
+- team_operations
+- management
+source:
+  collector: sample
+  query: findings
+evaluation:
+  kind: percentage
+  filters:
+  - field: closed_this_period
+    op: eq
+    value: true
+  numerator:
+  - field: closed_on_time
+    op: eq
+    value: true
+  group_by:
+  - business_unit
+frequency: monthly
+thresholds:
+  green:
+    min: 90
+  amber:
+    min: 80
+  red:
+    below: 80
+action_when_red: Review late closures with owners and adjust capacity or due dates at the next planning
+  meeting.
+frameworks:
+- pci-dss-4.0.1:6.3.1
+- soc2-tsc:CC4.2
+- nist-csf-2.0:ID.IM-01
+unit: percent
+higher_is_better: true
+baseline:
+  value: 78
+  method: findings tracker
+  date: '2025-10-31'
+target: 95
+approved_by:
+- data-security-manager
+- technology-risk
+- internal-audit
+review_by: '2027-03-31'

@@ -1,0 +1,40 @@
+# Default data security metric pack. Thresholds are starting points; tune them to
+# your risk appetite and record the change through review.
+id: KPI-04
+name: Security design review cycle time
+type: kpi
+question: How long do teams wait for a security design review?
+owner: security-architecture-lead
+audience:
+- team_operations
+- management
+source:
+  collector: sample
+  query: design_reviews
+evaluation:
+  kind: median
+  field: cycle_days
+frequency: monthly
+thresholds:
+  green:
+    max: 10
+  amber:
+    max: 14
+  red:
+    above: 14
+action_when_red: Add reviewer capacity or a fast path for low-risk changes.
+frameworks:
+- iso-27001-2022:A.8.27
+- iso-27001-2022:A.8.25
+- nist-csf-2.0:PR.PS-06
+unit: days
+baseline:
+  value: 14
+  method: review tracker
+  date: '2025-10-31'
+target: 7
+approved_by:
+- data-security-manager
+- technology-risk
+- internal-audit
+review_by: '2027-03-31'

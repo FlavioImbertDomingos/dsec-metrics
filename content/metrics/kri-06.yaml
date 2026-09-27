@@ -1,0 +1,41 @@
+# Default data security metric pack. Thresholds are starting points; tune them to
+# your risk appetite and record the change through review.
+id: KRI-06
+name: Secrets older than their rotation policy
+type: kri
+question: Are stored secrets rotated on schedule?
+owner: secrets-platform-lead
+audience:
+- team_operations
+- management
+source:
+  collector: sample
+  query: secrets_inventory
+evaluation:
+  kind: count
+  filters:
+  - field: overdue
+    op: eq
+    value: true
+  group_by:
+  - business_unit
+frequency: monthly
+thresholds:
+  green:
+    max: 3
+  amber:
+    max: 6
+  red:
+    above: 6
+action_when_red: Rotate overdue secrets and move the owning application to dynamic credentials where possible.
+frameworks:
+- pci-dss-4.0.1:8.6.3
+- nist-csf-2.0:PR.AA-01
+- iso-27001-2022:A.8.5
+unit: count
+target: 0
+approved_by:
+- data-security-manager
+- technology-risk
+- internal-audit
+review_by: '2027-03-31'

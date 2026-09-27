@@ -1,0 +1,37 @@
+# Dashboard layout. Widgets read metrics by id; every number links to its source.
+id: team-operations
+title: Team operations
+audience: team_operations
+refresh: daily
+layout:
+- widget: rag_list
+  title: Operational indicators
+  metrics:
+  - KRI-01
+  - KRI-04
+  - KRI-05
+  - KRI-06
+  - KPI-01
+  - KPI-02
+  - KPI-03
+  - KPI-04
+  width: 12
+- widget: exceptions_aging
+  title: Exceptions by age
+  metric: KRI-03
+  width: 6
+- widget: findings_burndown
+  title: Past-due findings
+  metric: KRI-01
+  periods: 12
+  width: 6
+- widget: bar
+  title: Certificates expiring by business unit
+  metric: KRI-05
+  rows: business_unit
+  width: 6
+- widget: trend
+  title: Audit requests answered on time
+  metric: KPI-02
+  periods: 12
+  width: 6

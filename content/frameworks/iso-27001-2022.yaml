@@ -1,0 +1,39 @@
+# ISO/IEC 27001:2022 Annex A: control IDs used by the default controls, with short
+# titles written by the project. ISO text is copyrighted and is not included.
+id: iso-27001-2022
+name: ISO/IEC 27001:2022 Annex A
+version: '2022'
+source_url: https://www.iso.org/standard/27001
+requirements:
+- ref: A.5.9
+  short_title: Information and asset inventory
+- ref: A.5.15
+  short_title: Access control rules
+- ref: A.5.18
+  short_title: Access rights are provisioned and reviewed
+- ref: A.5.33
+  short_title: Records are protected
+- ref: A.5.35
+  short_title: Information security is reviewed independently
+- ref: A.5.36
+  short_title: Compliance with policies and standards is checked
+- ref: A.8.2
+  short_title: Privileged access rights are restricted
+- ref: A.8.5
+  short_title: Authentication is secure
+- ref: A.8.8
+  short_title: Technical vulnerabilities are managed
+- ref: A.8.10
+  short_title: Information is deleted when no longer needed
+- ref: A.8.11
+  short_title: Data is masked
+- ref: A.8.12
+  short_title: Data leakage is prevented
+- ref: A.8.16
+  short_title: Systems are monitored
+- ref: A.8.24
+  short_title: Cryptography is used under defined rules
+- ref: A.8.25
+  short_title: Development life cycle is secure
+- ref: A.8.27
+  short_title: Architecture follows secure engineering principles

@@ -1,0 +1,34 @@
+# Tokenization controls.
+- id: DS-TK-01
+  name: Applications that handle PAN use tokens
+  owner: tokenization-lead
+  description: Applications store tokens, not card numbers.
+  requirements:
+  - pci-dss-4.0.1:3.5.1
+  - iso-27001-2022:A.8.11
+  metrics:
+  - KCI-03
+  evidence:
+  - collector: sample
+    query: payment_apps
+    retain_days: 400
+- id: DS-TK-02
+  name: Detokenization is restricted
+  owner: tokenization-lead
+  description: Only approved services can detokenize, and every call is logged.
+  requirements:
+  - soc2-tsc:CC6.1
+  - pci-dss-4.0.1:10.2.1
+  metrics: []
+  evidence: []
+- id: DS-TK-03
+  name: Token vault keys are managed
+  owner: tokenization-lead
+  description: Token vault keys follow the key management controls.
+  requirements:
+  - pci-dss-4.0.1:3.6.1
+  metrics: []
+  evidence:
+  - collector: sample
+    query: crypto_keys
+    retain_days: 400

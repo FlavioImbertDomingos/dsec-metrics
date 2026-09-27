@@ -1,0 +1,42 @@
+# Default data security metric pack. Thresholds are starting points; tune them to
+# your risk appetite and record the change through review.
+id: KPI-02
+name: Audit requests answered on time
+type: kpi
+question: Do we answer auditors by the date we agreed?
+owner: audit-liaison
+audience:
+- team_operations
+- management
+source:
+  collector: sample
+  query: audit_requests
+evaluation:
+  kind: percentage
+  filters:
+  - field: answered
+    op: exists
+  numerator:
+  - field: on_time
+    op: eq
+    value: true
+frequency: monthly
+thresholds:
+  green:
+    min: 95
+  amber:
+    min: 85
+  red:
+    below: 85
+action_when_red: Add reviewers for the open audit and report late items at the daily audit stand-up.
+frameworks:
+- soc2-tsc:CC4.1
+- iso-27001-2022:A.5.35
+unit: percent
+higher_is_better: true
+target: 100
+approved_by:
+- data-security-manager
+- technology-risk
+- internal-audit
+review_by: '2027-03-31'

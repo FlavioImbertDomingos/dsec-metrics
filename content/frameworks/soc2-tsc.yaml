@@ -1,0 +1,33 @@
+# SOC 2 Trust Services Criteria: criteria IDs used by the default controls, with short
+# titles written by the project. The AICPA text is copyrighted and is not included.
+id: soc2-tsc
+name: SOC 2 Trust Services Criteria
+version: 2017 (revised points of focus 2022)
+source_url: https://www.aicpa-cima.com/
+requirements:
+- ref: CC3.2
+  short_title: Risks to objectives are identified and analyzed
+- ref: CC4.1
+  short_title: Controls are evaluated on an ongoing basis
+- ref: CC4.2
+  short_title: Control deficiencies are reported and fixed
+- ref: CC6.1
+  short_title: Logical access to protected assets is restricted
+- ref: CC6.2
+  short_title: Users are registered and removed through a process
+- ref: CC6.3
+  short_title: Access is granted and changed by role
+- ref: CC6.6
+  short_title: Access from outside the boundary is controlled
+- ref: CC6.7
+  short_title: Data in transit is restricted and protected
+- ref: CC7.1
+  short_title: Configuration and vulnerability changes are detected
+- ref: CC7.2
+  short_title: Anomalies are monitored and analyzed
+- ref: CC8.1
+  short_title: Changes are authorized, tested and approved
+- ref: C1.1
+  short_title: Confidential information is identified and protected
+- ref: C1.2
+  short_title: Confidential information is disposed of securely

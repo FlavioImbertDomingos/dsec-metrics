@@ -1,0 +1,95 @@
+# NIST CSF 2.0: functions and categories with their official names, plus the
+# subcategories the default controls use (titles shortened by the project).
+# NIST publications are US government works; full text may be added under `text`.
+id: nist-csf-2.0
+name: NIST Cybersecurity Framework
+version: '2.0'
+source_url: https://www.nist.gov/cyberframework
+public_domain: true
+requirements:
+- ref: GV
+  short_title: Govern
+- ref: GV.OC
+  short_title: Organizational Context
+- ref: GV.RM
+  short_title: Risk Management Strategy
+- ref: GV.RR
+  short_title: Roles, Responsibilities, and Authorities
+- ref: GV.PO
+  short_title: Policy
+- ref: GV.OV
+  short_title: Oversight
+- ref: GV.SC
+  short_title: Cybersecurity Supply Chain Risk Management
+- ref: ID
+  short_title: Identify
+- ref: ID.AM
+  short_title: Asset Management
+- ref: ID.RA
+  short_title: Risk Assessment
+- ref: ID.IM
+  short_title: Improvement
+- ref: PR
+  short_title: Protect
+- ref: PR.AA
+  short_title: Identity Management, Authentication, and Access Control
+- ref: PR.AT
+  short_title: Awareness and Training
+- ref: PR.DS
+  short_title: Data Security
+- ref: PR.PS
+  short_title: Platform Security
+- ref: PR.IR
+  short_title: Technology Infrastructure Resilience
+- ref: DE
+  short_title: Detect
+- ref: DE.CM
+  short_title: Continuous Monitoring
+- ref: DE.AE
+  short_title: Adverse Event Analysis
+- ref: RS
+  short_title: Respond
+- ref: RS.MA
+  short_title: Incident Management
+- ref: RS.AN
+  short_title: Incident Analysis
+- ref: RS.CO
+  short_title: Incident Response Reporting and Communication
+- ref: RS.MI
+  short_title: Incident Mitigation
+- ref: RC
+  short_title: Recover
+- ref: RC.RP
+  short_title: Incident Recovery Plan Execution
+- ref: RC.CO
+  short_title: Incident Recovery Communication
+- ref: GV.OV-03
+  short_title: Risk management performance is evaluated and reviewed
+- ref: GV.PO-01
+  short_title: Cybersecurity policy is established and communicated
+- ref: GV.RM-06
+  short_title: Risk is calculated and prioritized with a standard method
+- ref: ID.AM-07
+  short_title: Data inventories and metadata are maintained
+- ref: ID.IM-01
+  short_title: Improvements come from evaluations
+- ref: ID.RA-01
+  short_title: Asset vulnerabilities are identified and recorded
+- ref: PR.AA-01
+  short_title: Identities and credentials are managed
+- ref: PR.AA-03
+  short_title: Users, services and hardware are authenticated
+- ref: PR.AA-05
+  short_title: Access permissions are managed and reviewed
+- ref: PR.DS-01
+  short_title: Data at rest is protected
+- ref: PR.DS-02
+  short_title: Data in transit is protected
+- ref: PR.DS-10
+  short_title: Data in use is protected
+- ref: PR.PS-01
+  short_title: Configuration management practices are applied
+- ref: PR.PS-06
+  short_title: Secure development practices are part of software development
+- ref: DE.CM-09
+  short_title: Computing hardware, software and their data are monitored

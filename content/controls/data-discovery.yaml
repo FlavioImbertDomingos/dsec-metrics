@@ -1,0 +1,49 @@
+# Data discovery controls.
+- id: DS-DL-01
+  name: Card data discovery runs across file shares
+  owner: data-discovery-lead
+  description: Discovery scans every file share and object store monthly.
+  requirements:
+  - pci-dss-4.0.1:12.5.2
+  - nist-csf-2.0:ID.AM-07
+  - iso-27001-2022:A.8.12
+  metrics:
+  - KRI-07
+  evidence:
+  - collector: sample
+    query: card_data_scans
+    retain_days: 730
+- id: DS-DL-02
+  name: Stray card data is removed
+  owner: data-discovery-lead
+  description: Card data found outside approved stores is removed or tokenized within ten business days.
+  requirements:
+  - pci-dss-4.0.1:3.2.1
+  - iso-27001-2022:A.8.10
+  - soc2-tsc:C1.2
+  metrics:
+  - KRI-07
+  evidence:
+  - collector: sample
+    query: card_data_scans
+    retain_days: 730
+- id: DS-DL-03
+  name: Sensitive authentication data is not retained
+  owner: data-discovery-lead
+  description: No CVV, PIN or track data is stored after authorization.
+  requirements:
+  - pci-dss-4.0.1:3.3.1
+  metrics: []
+  evidence:
+  - collector: sample
+    query: card_data_scans
+    retain_days: 730
+- id: DS-DL-04
+  name: PAN is masked when displayed
+  owner: data-protection-lead
+  description: Screens and reports show at most the first six and last four digits.
+  requirements:
+  - pci-dss-4.0.1:3.4.1
+  - iso-27001-2022:A.8.11
+  metrics: []
+  evidence: []

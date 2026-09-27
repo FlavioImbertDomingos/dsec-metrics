@@ -1,0 +1,42 @@
+# Default data security metric pack. Thresholds are starting points; tune them to
+# your risk appetite and record the change through review.
+id: KRI-05
+name: Certificates expiring within 30 days
+type: kri
+question: Will a certificate expire before someone renews it?
+owner: pki-lead
+audience:
+- team_operations
+- management
+source:
+  collector: sample
+  query: certificates
+evaluation:
+  kind: count
+  filters:
+  - field: days_to_expiry
+    op: lte
+    value: 30
+  group_by:
+  - business_unit
+frequency: monthly
+thresholds:
+  green:
+    max: 3
+  amber:
+    max: 6
+  red:
+    above: 6
+action_when_red: Renew every listed certificate this week and confirm automated renewal is enabled.
+frameworks:
+- pci-dss-4.0.1:4.2.1
+- pci-dss-4.0.1:4.2.1.1
+- nist-csf-2.0:PR.DS-02
+- soc2-tsc:CC6.7
+unit: count
+target: 0
+approved_by:
+- data-security-manager
+- technology-risk
+- internal-audit
+review_by: '2027-03-31'

@@ -1,0 +1,44 @@
+# Default data security metric pack. Thresholds are starting points; tune them to
+# your risk appetite and record the change through review.
+id: KCI-04
+name: Controls with automated evidence
+type: kci
+question: How much of our audit evidence is collected without manual work?
+owner: data-security-manager
+audience:
+- management
+- team_operations
+source:
+  collector: sample
+  query: control_evidence
+evaluation:
+  kind: percentage
+  numerator:
+  - field: automated
+    op: eq
+    value: true
+frequency: monthly
+thresholds:
+  green:
+    min: 65
+  amber:
+    min: 50
+  red:
+    below: 50
+action_when_red: Pick the three largest manual evidence tasks and automate them next quarter.
+frameworks:
+- nist-csf-2.0:GV.OV-03
+- soc2-tsc:CC4.1
+- iso-27001-2022:A.5.35
+unit: percent
+higher_is_better: true
+baseline:
+  value: 45
+  method: evidence request list review
+  date: '2025-10-31'
+target: 80
+approved_by:
+- data-security-manager
+- technology-risk
+- internal-audit
+review_by: '2027-03-31'

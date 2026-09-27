@@ -1,0 +1,46 @@
+# Default data security metric pack. Thresholds are starting points; tune them to
+# your risk appetite and record the change through review.
+id: KRI-07
+name: Card data found outside approved stores
+type: kri
+question: Is card data leaking into places it should not be?
+owner: data-discovery-lead
+audience:
+- risk_committee
+- management
+- team_operations
+source:
+  collector: sample
+  query: card_data_scans
+evaluation:
+  kind: sum
+  field: finding_count
+  filters:
+  - field: approved_store
+    op: eq
+    value: false
+  group_by:
+  - business_unit
+frequency: monthly
+thresholds:
+  green:
+    max: 2
+  amber:
+    max: 5
+  red:
+    above: 5
+action_when_red: Purge or tokenize the data within ten business days and find the process that put it
+  there.
+frameworks:
+- pci-dss-4.0.1:3.2.1
+- pci-dss-4.0.1:12.5.2
+- nist-csf-2.0:ID.AM-07
+- iso-27001-2022:A.8.12
+- soc2-tsc:C1.1
+unit: count
+target: 0
+approved_by:
+- data-security-manager
+- technology-risk
+- internal-audit
+review_by: '2027-03-31'

@@ -1,0 +1,55 @@
+# Default data security metric pack. Thresholds are starting points; tune them to
+# your risk appetite and record the change through review.
+id: KRI-03
+name: Exceptions open more than 180 days
+type: kri
+question: Are exceptions staying temporary?
+owner: data-security-exceptions-lead
+audience:
+- risk_committee
+- management
+source:
+  collector: sample
+  query: open_exceptions
+evaluation:
+  kind: count
+  filters:
+  - field: status
+    op: eq
+    value: approved
+  - field: days_since_approval
+    op: gt
+    value: 180
+  group_by:
+  - business_unit
+frequency: monthly
+thresholds:
+  green:
+    max: 5
+  amber:
+    max: 15
+  red:
+    above: 15
+  overrides:
+  - dimension:
+      business_unit: cards
+    amber:
+      max: 8
+    red:
+      above: 8
+action_when_red: Escalate owners to the business unit CIO and include in the risk committee pack.
+frameworks:
+- nist-csf-2.0:GV.RM
+- pci-dss-4.0.1:12.5.2
+- iso-27001-2022:A.5.36
+unit: count
+baseline:
+  value: 22
+  method: manual count from register
+  date: '2025-10-31'
+target: 5
+approved_by:
+- data-security-manager
+- technology-risk
+- internal-audit
+review_by: '2027-03-31'

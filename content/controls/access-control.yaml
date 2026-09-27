@@ -1,0 +1,69 @@
+# Access control controls.
+- id: DS-AC-01
+  name: Administrators of in-scope systems use MFA
+  owner: identity-lead
+  description: MFA is required for all administrative access into the cardholder data environment.
+  requirements:
+  - pci-dss-4.0.1:8.4.1
+  - nist-csf-2.0:PR.AA-03
+  - iso-27001-2022:A.8.5
+  metrics:
+  - KCI-02
+  evidence:
+  - collector: sample
+    query: admin_accounts
+    retain_days: 400
+- id: DS-AC-02
+  name: All access into the CDE uses MFA
+  owner: identity-lead
+  description: Every user reaching the cardholder data environment authenticates with MFA.
+  requirements:
+  - pci-dss-4.0.1:8.4.2
+  - soc2-tsc:CC6.1
+  metrics: []
+  evidence:
+  - collector: sample
+    query: admin_accounts
+    retain_days: 400
+- id: DS-AC-03
+  name: Privileged access is reviewed on schedule
+  owner: identity-lead
+  description: Privileged access is reviewed every quarter and removed when not needed.
+  requirements:
+  - pci-dss-4.0.1:7.2.4
+  - nist-csf-2.0:PR.AA-05
+  - iso-27001-2022:A.5.18
+  - soc2-tsc:CC6.2
+  metrics:
+  - KPI-01
+  evidence:
+  - collector: sample
+    query: access_reviews
+    retain_days: 400
+- id: DS-AC-04
+  name: Access follows a defined model
+  owner: identity-lead
+  description: Access is granted by role through the identity governance process.
+  requirements:
+  - pci-dss-4.0.1:7.2.1
+  - iso-27001-2022:A.5.15
+  - soc2-tsc:CC6.3
+  metrics: []
+  evidence: []
+- id: DS-AC-05
+  name: Service accounts have least privilege
+  owner: identity-lead
+  description: Service accounts are owned, scoped and cannot log in interactively.
+  requirements:
+  - pci-dss-4.0.1:7.2.5
+  - iso-27001-2022:A.8.2
+  metrics: []
+  evidence: []
+- id: DS-AC-06
+  name: Authentication is required for all access
+  owner: identity-lead
+  description: No shared or anonymous access to in-scope systems.
+  requirements:
+  - pci-dss-4.0.1:8.3.1
+  metrics: []
+  evidence: []

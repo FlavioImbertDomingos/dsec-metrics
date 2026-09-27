@@ -1,0 +1,43 @@
+# Default data security metric pack. Thresholds are starting points; tune them to
+# your risk appetite and record the change through review.
+id: KPI-01
+name: Privileged access reviews completed on time
+type: kpi
+question: Do reviewers finish privileged access reviews by the due date?
+owner: identity-lead
+audience:
+- team_operations
+- management
+source:
+  collector: sample
+  query: access_reviews
+evaluation:
+  kind: percentage
+  numerator:
+  - field: on_time
+    op: eq
+    value: true
+  group_by:
+  - business_unit
+frequency: monthly
+thresholds:
+  green:
+    min: 95
+  amber:
+    min: 85
+  red:
+    below: 85
+action_when_red: Revoke access for reviews more than 10 days late and notify the reviewer's manager.
+frameworks:
+- pci-dss-4.0.1:7.2.4
+- nist-csf-2.0:PR.AA-05
+- iso-27001-2022:A.5.18
+- soc2-tsc:CC6.2
+unit: percent
+higher_is_better: true
+target: 100
+approved_by:
+- data-security-manager
+- technology-risk
+- internal-audit
+review_by: '2027-03-31'

@@ -1,0 +1,44 @@
+# Dashboard layout. Widgets read metrics by id; every number links to its source.
+id: management
+title: Management
+audience: management
+refresh: monthly
+layout:
+- widget: stat
+  metric: KCI-01
+  width: 3
+- widget: stat
+  metric: KCI-02
+  width: 3
+- widget: stat
+  metric: KCI-03
+  width: 3
+- widget: stat
+  metric: KCI-04
+  width: 3
+- widget: trend
+  title: Coverage against baseline and target
+  metrics:
+  - KCI-01
+  - KCI-02
+  periods: 12
+  width: 6
+- widget: trend
+  title: Tokenization adoption
+  metric: KCI-03
+  periods: 12
+  width: 6
+- widget: trend
+  title: Findings closed on time
+  metric: KPI-03
+  periods: 12
+  width: 6
+- widget: table
+  title: Program indicators
+  metrics:
+  - KPI-01
+  - KPI-02
+  - KPI-03
+  - KPI-04
+  - KRI-02
+  width: 6

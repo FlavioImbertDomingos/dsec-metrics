@@ -1,0 +1,38 @@
+# Exceptions controls.
+- id: DS-EX-01
+  name: Exceptions are approved and time-limited
+  owner: data-security-exceptions-lead
+  description: Every exception has compensating controls, an owner and an expiry.
+  requirements:
+  - nist-csf-2.0:GV.RM-06
+  - iso-27001-2022:A.5.36
+  metrics:
+  - KRI-02
+  evidence:
+  - collector: sample
+    query: open_exceptions
+    retain_days: 1095
+- id: DS-EX-02
+  name: Long-running exceptions are escalated
+  owner: data-security-exceptions-lead
+  description: Exceptions open more than 180 days go to the risk committee.
+  requirements:
+  - nist-csf-2.0:GV.OV-03
+  - pci-dss-4.0.1:12.5.2
+  metrics:
+  - KRI-03
+  evidence:
+  - collector: sample
+    query: open_exceptions
+    retain_days: 1095
+- id: DS-EX-03
+  name: Exception root causes are tracked
+  owner: data-security-exceptions-lead
+  description: Each exception records a root cause so patterns show up.
+  requirements:
+  - soc2-tsc:CC3.2
+  metrics: []
+  evidence:
+  - collector: sample
+    query: open_exceptions
+    retain_days: 1095

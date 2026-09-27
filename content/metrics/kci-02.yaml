@@ -1,0 +1,51 @@
+# Default data security metric pack. Thresholds are starting points; tune them to
+# your risk appetite and record the change through review.
+id: KCI-02
+name: MFA coverage for administrators of in-scope systems
+type: kci
+question: Does every administrator of an in-scope system use MFA?
+owner: identity-lead
+audience:
+- management
+- risk_committee
+source:
+  collector: sample
+  query: admin_accounts
+evaluation:
+  kind: percentage
+  filters:
+  - field: in_scope
+    op: eq
+    value: true
+  numerator:
+  - field: mfa_enabled
+    op: eq
+    value: true
+  group_by:
+  - business_unit
+frequency: monthly
+thresholds:
+  green:
+    min: 99
+  amber:
+    min: 96
+  red:
+    below: 96
+action_when_red: Disable administrator access without MFA within 48 hours.
+frameworks:
+- pci-dss-4.0.1:8.4.1
+- nist-csf-2.0:PR.AA-03
+- iso-27001-2022:A.8.5
+- soc2-tsc:CC6.1
+unit: percent
+higher_is_better: true
+baseline:
+  value: 93
+  method: identity provider report
+  date: '2025-10-31'
+target: 100
+approved_by:
+- data-security-manager
+- technology-risk
+- internal-audit
+review_by: '2027-03-31'

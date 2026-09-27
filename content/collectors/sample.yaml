@@ -1,0 +1,10 @@
+# The sample collector generates deterministic synthetic data. It has no credentials
+# and makes no network calls.
+id: sample
+plugin: sample
+description: Synthetic data for demos and tests. Replace with real collectors in production.
+config:
+  seed: 42
+  anchor: '2026-09-30'
+  months: 12
+schedule: 5 2 * * *

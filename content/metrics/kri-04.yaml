@@ -1,0 +1,51 @@
+# Default data security metric pack. Thresholds are starting points; tune them to
+# your risk appetite and record the change through review.
+id: KRI-04
+name: Keys past their cryptoperiod
+type: kri
+question: Are production keys rotated when their cryptoperiod ends?
+owner: crypto-services-lead
+audience:
+- risk_committee
+- management
+- team_operations
+source:
+  collector: sample
+  query: crypto_keys
+evaluation:
+  kind: count
+  filters:
+  - field: past_cryptoperiod
+    op: eq
+    value: true
+  - field: environment
+    op: eq
+    value: prod
+  group_by:
+  - business_unit
+frequency: monthly
+thresholds:
+  green:
+    max: 2
+  amber:
+    max: 5
+  red:
+    above: 5
+action_when_red: Rotate overdue keys within five business days; open a finding for any key that cannot
+  be rotated.
+frameworks:
+- pci-dss-4.0.1:3.7.4
+- nist-csf-2.0:PR.DS-01
+- iso-27001-2022:A.8.24
+- soc2-tsc:CC6.1
+unit: count
+baseline:
+  value: 2
+  method: key inventory export
+  date: '2025-10-31'
+target: 0
+approved_by:
+- data-security-manager
+- technology-risk
+- internal-audit
+review_by: '2027-03-31'

@@ -1,0 +1,44 @@
+# Default data security metric pack. Thresholds are starting points; tune them to
+# your risk appetite and record the change through review.
+id: KRI-08
+name: Repeat findings
+type: kri
+question: Do the same issues keep coming back?
+owner: data-security-manager
+audience:
+- risk_committee
+- management
+source:
+  collector: sample
+  query: findings
+evaluation:
+  kind: count
+  filters:
+  - field: status
+    op: eq
+    value: open
+  - field: repeat
+    op: eq
+    value: true
+  group_by:
+  - business_unit
+frequency: monthly
+thresholds:
+  green:
+    max: 2
+  amber:
+    max: 4
+  red:
+    above: 4
+action_when_red: Run a root-cause review for each repeat finding and report the fix to the risk committee.
+frameworks:
+- soc2-tsc:CC4.2
+- nist-csf-2.0:ID.IM-01
+- iso-27001-2022:A.5.35
+unit: count
+target: 0
+approved_by:
+- data-security-manager
+- technology-risk
+- internal-audit
+review_by: '2027-03-31'

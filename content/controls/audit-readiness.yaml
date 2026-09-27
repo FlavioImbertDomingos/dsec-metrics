@@ -1,0 +1,52 @@
+# Audit readiness controls.
+- id: DS-AU-01
+  name: Audit requests are answered on time
+  owner: audit-liaison
+  description: Evidence requests are answered by the agreed date.
+  requirements:
+  - soc2-tsc:CC4.1
+  - iso-27001-2022:A.5.35
+  metrics:
+  - KPI-02
+  evidence:
+  - collector: sample
+    query: audit_requests
+    retain_days: 1095
+- id: DS-AU-02
+  name: Control evidence is collected automatically
+  owner: data-security-manager
+  description: Evidence comes from systems of record, not screenshots.
+  requirements:
+  - soc2-tsc:CC4.1
+  - nist-csf-2.0:GV.OV-03
+  metrics:
+  - KCI-04
+  evidence:
+  - collector: sample
+    query: control_evidence
+    retain_days: 1095
+- id: DS-AU-03
+  name: Security design reviews happen before build
+  owner: security-architecture-lead
+  description: New and changed systems get a security design review before build.
+  requirements:
+  - iso-27001-2022:A.8.27
+  - iso-27001-2022:A.8.25
+  - nist-csf-2.0:PR.PS-06
+  metrics:
+  - KPI-04
+  evidence:
+  - collector: sample
+    query: design_reviews
+    retain_days: 400
+- id: DS-AU-04
+  name: Evidence records are protected
+  owner: audit-liaison
+  description: Evidence packages are signed and retained per policy.
+  requirements:
+  - iso-27001-2022:A.5.33
+  metrics: []
+  evidence:
+  - collector: sample
+    query: control_evidence
+    retain_days: 1095
