@@ -24,6 +24,12 @@ export function applyPreference(pref: ThemePreference): void {
     // Storage can be unavailable (private mode); the choice then lasts for this page only.
   }
   const dark = pref === "dark" || (pref === "system" && systemPrefersDark());
-  document.documentElement.classList.toggle("dark", dark);
-  document.documentElement.style.colorScheme = dark ? "dark" : "light";
+  const root = document.documentElement;
+  // Switch in one step: without this, elements with color transitions pass through
+  // low-contrast in-between colors for a moment.
+  root.classList.add("theme-switching");
+  root.classList.toggle("dark", dark);
+  root.style.colorScheme = dark ? "dark" : "light";
+  getComputedStyle(root).getPropertyValue("color"); // apply new colors before transitions return
+  root.classList.remove("theme-switching");
 }
