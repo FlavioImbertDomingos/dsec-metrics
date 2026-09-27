@@ -609,3 +609,65 @@ def grant_auditor(
         f"{username} may see {', '.join(sorted(set(framework)))} for {start} to {end}"
         f" until {expires:%Y-%m-%d %H:%M} UTC"
     )
+
+
+# Plugins and collectors (M4).
+
+plugin_app = typer.Typer(help="Installed plugins and new plugin packages.", no_args_is_help=True)
+plugin_new_app = typer.Typer(help="Scaffold a new plugin package.", no_args_is_help=True)
+app.add_typer(plugin_app, name="plugin")
+plugin_app.add_typer(plugin_new_app, name="new")
+
+
+@plugin_app.command("list")
+def plugin_list() -> None:
+    """List installed collectors with their version, queries and read-only permissions."""
+    from dsec_metrics.plugins.sdk.registry import COLLECTORS, collector_class, plugin_names
+
+    for name in plugin_names(COLLECTORS):
+        cls = collector_class(name)
+        typer.echo(f"{name} {cls.version}")
+        for query, description in sorted(cls.queries.items()):
+            typer.echo(f"  query {query}: {description}")
+        for permission in cls.required_permissions:
+            typer.echo(f"  needs {permission}")
+
+
+@plugin_new_app.command("collector")
+def plugin_new_collector(
+    name: Annotated[str, typer.Argument(help="Plugin name, for example asset_inventory.")],
+    directory: Annotated[
+        Path, typer.Option("--directory", "-d", help="Where to create the package.")
+    ] = Path(),
+) -> None:
+    """Create a collector package with an entry point, a config model, fixtures and tests."""
+    from dsec_metrics.plugins.scaffold import ScaffoldError, new_collector
+
+    try:
+        root = new_collector(name, directory)
+    except ScaffoldError as exc:
+        raise _fail(str(exc)) from None
+    typer.echo(f"created {root}")
+    typer.echo(f"next: pip install -e {root} && pytest {root}")
+
+
+@app.command("test-connection")
+def connection_test(instance: str, content_dir: ContentOpt = None) -> None:
+    """Check that a collector instance can reach its source with its read-only access."""
+    from dsec_metrics.pipeline import build_collector
+    from dsec_metrics.plugins.sdk.base import CollectorError
+    from dsec_metrics.plugins.sdk.registry import PluginError, default_secret_resolver
+    from dsec_metrics.plugins.sdk.secrets import SecretError
+
+    _settings()
+    content = _validated_content(content_dir)
+    if instance not in content.collectors:
+        raise _fail(f"unknown collector instance {instance!r}")
+    try:
+        collector = build_collector(content.collectors[instance], default_secret_resolver())
+        result = collector.test_connection()
+    except (CollectorError, PluginError, SecretError, ValueError) as exc:
+        raise _fail(f"{instance}: {exc}") from None
+    typer.echo(f"{'ok' if result.ok else 'failed'}: {result.detail}")
+    if not result.ok:
+        raise typer.Exit(1)
