@@ -30,7 +30,7 @@ deploy/compose/secrets/*
 !deploy/compose/secrets/.gitkeep
 
 # Scan and build outputs
-reports/
+/reports/
 *.sbom.json
 
 # Editors and OS
