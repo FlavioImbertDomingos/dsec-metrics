@@ -17,6 +17,7 @@ from sqlalchemy import and_, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from dsec_metrics import audit
 from dsec_metrics.content import Content
 from dsec_metrics.core.canonical import canonical_hash
 from dsec_metrics.core.definitions import CollectorInstance, Metric, definition_hash
@@ -58,8 +59,11 @@ def build_collector(instance: CollectorInstance, secrets: SecretResolver) -> Col
 # Definitions.
 
 
-def sync_definitions(db: Session, content: Content) -> dict[tuple[str, str], DefinitionVersion]:
-    """Store any new definition versions and mark the current ones. Returns current rows."""
+def sync_definitions(
+    db: Session, content: Content, actor: str = "system"
+) -> dict[tuple[str, str], DefinitionVersion]:
+    """Store any new definition versions and mark the current ones. Returns current rows.
+    Each new version is written to the audit log."""
     current: dict[tuple[str, str], DefinitionVersion] = {}
     for kind, def_id, definition in content.items():
         sha = definition_hash(definition)
@@ -87,6 +91,13 @@ def sync_definitions(db: Session, content: Content) -> dict[tuple[str, str], Def
             )
             db.add(row)
             db.flush()
+            audit.record(
+                db,
+                actor,
+                "definition.version",
+                f"{kind}:{def_id}",
+                {"version": row.version, "sha256": sha, "source": row.source},
+            )
             log.info(
                 "definition stored",
                 extra={
@@ -150,8 +161,10 @@ def run_collection(
     as_of: date,
     secrets: SecretResolver,
     params: dict[str, Any] | None = None,
+    actor: str = "system",
 ) -> CollectionResult:
-    """Collect, redact, hash and store. A failed run is recorded, not raised."""
+    """Collect, redact, hash and store. A failed run is recorded, not raised. Either way
+    the run is written to the audit log."""
     params = dict(params or {})
     sync_instance(db, instance)
     run = CollectionRun(
@@ -195,6 +208,7 @@ def run_collection(
         run.status = "failed"
         run.error = str(exc)[:2000]
         run.finished_at = datetime.now(UTC)
+        _audit_run(db, actor, instance, query, as_of, run, batches, total, masked)
         log.warning(
             "collection failed",
             extra={"event": "collection_failed", "instance": instance.id, "query": query},
@@ -203,6 +217,7 @@ def run_collection(
     run.status = "succeeded"
     run.record_count = total
     run.finished_at = datetime.now(UTC)
+    _audit_run(db, actor, instance, query, as_of, run, batches, total, masked)
     log.info(
         "collection finished",
         extra={
@@ -214,6 +229,34 @@ def run_collection(
         },
     )
     return CollectionResult(str(run.id), run.status, batches, total, masked)
+
+
+def _audit_run(
+    db: Session,
+    actor: str,
+    instance: CollectorInstance,
+    query: str,
+    as_of: date,
+    run: CollectionRun,
+    batches: int,
+    records: int,
+    masked: int,
+) -> None:
+    audit.record(
+        db,
+        actor,
+        "collection.run",
+        f"collector:{instance.id}",
+        {
+            "run_id": str(run.id),
+            "query": query,
+            "as_of": as_of.isoformat(),
+            "status": run.status,
+            "batches": batches,
+            "records": records,
+            "pans_masked": masked,
+        },
+    )
 
 
 def latest_batches(
@@ -327,15 +370,15 @@ def sources_needed(content: Content) -> dict[str, set[str]]:
 
 
 def run_period(
-    db: Session, content: Content, as_of: date, secrets: SecretResolver
+    db: Session, content: Content, as_of: date, secrets: SecretResolver, actor: str = "system"
 ) -> dict[str, int]:
     """Collect every needed source and evaluate every metric for one period."""
-    current = sync_definitions(db, content)
+    current = sync_definitions(db, content, actor)
     runs = failed = 0
     for instance_id, queries in sorted(sources_needed(content).items()):
         instance = content.collectors[instance_id]
         for query in sorted(queries):
-            result = run_collection(db, instance, query, as_of, secrets)
+            result = run_collection(db, instance, query, as_of, secrets, actor=actor)
             runs += 1
             failed += result.status != "succeeded"
     measurements = evaluate_all(db, content, current, as_of)

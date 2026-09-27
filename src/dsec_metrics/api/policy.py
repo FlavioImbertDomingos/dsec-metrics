@@ -1,9 +1,14 @@
 """The one place where API access decisions are made.
 
-Every route declares exactly one policy dependency from this module: either
-:func:`public` with a reason, or :func:`authenticated` (roles arrive in M5). The test
+Every route declares exactly one policy dependency from this module: :func:`public`
+with a reason, :func:`authenticated` (any signed-in user; the handler narrows further,
+as the auditor routes do), or a role policy (``staff``, ``author``, ``admin``). The test
 ``tests/integration/test_route_authz.py`` walks the app's routes and fails when a route
 declares no policy, declares two, or has no allowed and denied test cases.
+
+Roles come from the brief: ``admin``, ``metric_owner``, ``reviewer``, ``viewer``,
+``auditor`` and ``service``. Auditors are read-only and see only what an unexpired grant
+covers, so they are not staff.
 """
 
 from __future__ import annotations
@@ -40,6 +45,12 @@ def policy_of(call: object) -> str | None:
     return value if isinstance(value, str) else None
 
 
+ROLES = frozenset({"admin", "metric_owner", "reviewer", "viewer", "auditor", "service"})
+STAFF = frozenset({"admin", "metric_owner", "reviewer", "viewer", "service"})
+AUTHORS = frozenset({"admin", "metric_owner", "reviewer"})
+ADMINS = frozenset({"admin"})
+
+
 @dataclass(frozen=True, slots=True)
 class Principal:
     """The authenticated caller."""
@@ -49,6 +60,12 @@ class Principal:
     display_name: str
     session_id: UUID
     csrf_token: str
+    roles: frozenset[str] = frozenset()
+
+    @property
+    def is_staff(self) -> bool:
+        """Any role other than auditor."""
+        return bool(self.roles & STAFF)
 
 
 def get_settings_dep(request: Request) -> Settings:
@@ -97,9 +114,9 @@ def public(reason: str) -> Callable[[], None]:
     return _public
 
 
-@_tag("authenticated")
-def authenticated(request: Request, db: DbDep, settings: SettingsDep) -> Principal:
-    """Require a live session. Unsafe methods also need the CSRF token and origin."""
+def session_principal(request: Request, db: DbDep, settings: SettingsDep) -> Principal:
+    """Require a live session. Unsafe methods also need the CSRF token and origin.
+    Not a policy on its own: routes use one of the tagged policies below."""
     token = request.cookies.get(COOKIE_NAME)
     if not token:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not signed in")
@@ -118,7 +135,36 @@ def authenticated(request: Request, db: DbDep, settings: SettingsDep) -> Princip
         display_name=row.user.display_name,
         session_id=row.id,
         csrf_token=row.csrf_token,
+        roles=frozenset(row.user.roles or ()) & ROLES,
     )
 
 
+SessionDep = Annotated[Principal, Depends(session_principal)]
+
+
+@_tag("authenticated")
+def authenticated(principal: SessionDep) -> Principal:
+    """Any signed-in user, whatever their roles."""
+    return principal
+
+
+def _role_policy(name: str, allowed: frozenset[str]) -> Callable[[Principal], Principal]:
+    @_tag(name)
+    def policy(principal: SessionDep) -> Principal:
+        if not principal.roles & allowed:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Not allowed")
+        return principal
+
+    policy.__name__ = f"require_{name}"
+    policy.__doc__ = f"Require one of: {', '.join(sorted(allowed))}."
+    return policy
+
+
+staff = _role_policy("staff", STAFF)
+author = _role_policy("author", AUTHORS)
+admin = _role_policy("admin", ADMINS)
+
 PrincipalDep = Annotated[Principal, Depends(authenticated)]
+StaffDep = Annotated[Principal, Depends(staff)]
+AuthorDep = Annotated[Principal, Depends(author)]
+AdminDep = Annotated[Principal, Depends(admin)]

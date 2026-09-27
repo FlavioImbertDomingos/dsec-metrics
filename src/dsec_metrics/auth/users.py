@@ -26,8 +26,15 @@ def find_user(db: Session, username: str) -> User | None:
     return db.scalars(select(User).where(User.username == username)).first()
 
 
-def ensure_local_user(db: Session, username: str, password: str, display_name: str) -> bool:
-    """Create the user, or reset its password if it changed. Returns True if created."""
+def ensure_local_user(
+    db: Session,
+    username: str,
+    password: str,
+    display_name: str,
+    roles: tuple[str, ...] = ("viewer",),
+) -> bool:
+    """Create the user, or reset its password if it changed, and set its roles.
+    Returns True if created."""
     check_password_policy(password)
     user = find_user(db, username)
     if user is None:
@@ -37,9 +44,12 @@ def ensure_local_user(db: Session, username: str, password: str, display_name: s
                 display_name=display_name,
                 password_hash=hash_password(password),
                 is_active=True,
+                roles=sorted(set(roles)),
             )
         )
+        db.flush()
         return True
     if not verify_password(user.password_hash, password):
         user.password_hash = hash_password(password)
+    user.roles = sorted(set(roles))
     return False

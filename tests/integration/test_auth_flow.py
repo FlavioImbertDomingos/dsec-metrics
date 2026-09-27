@@ -45,7 +45,12 @@ def test_me_and_logout(client: TestClient, user: str) -> None:
     csrf = login(client)
     me = client.get("/api/me")
     assert me.status_code == 200
-    assert me.json() == {"username": TEST_USER, "display_name": "Test User", "csrf_token": csrf}
+    assert me.json() == {
+        "username": TEST_USER,
+        "display_name": "Test User",
+        "csrf_token": csrf,
+        "roles": ["admin"],
+    }
 
     out = client.post("/api/auth/logout", headers={"X-CSRF-Token": csrf})
     assert out.status_code == 204

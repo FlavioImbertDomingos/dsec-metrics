@@ -43,9 +43,14 @@ def run_instance(instance_id: str) -> dict[str, int]:
     failed = 0
     try:
         with transaction(make_session_factory(engine)) as db:
-            current = sync_definitions(db, content)
+            current = sync_definitions(db, content, "system:worker")
             for query in queries:
-                failed += run_collection(db, instance, query, as_of, secrets).status != "succeeded"
+                failed += (
+                    run_collection(
+                        db, instance, query, as_of, secrets, actor="system:worker"
+                    ).status
+                    != "succeeded"
+                )
             metric_ids = [
                 m.id for m in content.metrics.values() if m.source.collector == instance_id
             ]

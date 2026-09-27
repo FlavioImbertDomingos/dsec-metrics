@@ -38,6 +38,7 @@ class MeResponse(StrictModel):
     username: str
     display_name: str
     csrf_token: str
+    roles: list[str] = Field(default_factory=list)
 
 
 class ErrorResponse(StrictModel):

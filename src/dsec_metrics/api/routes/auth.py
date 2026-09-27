@@ -7,7 +7,9 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
+from dsec_metrics import audit
 from dsec_metrics.api.policy import (
+    ROLES,
     DbDep,
     PrincipalDep,
     SettingsDep,
@@ -74,6 +76,8 @@ def login(
     source = client_address(request)
     if throttle.is_throttled(db, body.username, source, settings, now):
         security_event(log, "login_throttled", username=body.username, source=source)
+        audit.record(db, "anonymous", "auth.throttled", f"user:{body.username}", {"source": source})
+        db.commit()
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many attempts, try later")
 
     user = find_user(db, body.username)
@@ -81,16 +85,21 @@ def login(
     if user is None or not ok or not user.is_active:
         throttle.record_failure(db, body.username, source, now)
         security_event(log, "login_failed", username=body.username, source=source)
+        audit.record(db, "anonymous", "auth.failed", f"user:{body.username}", {"source": source})
         db.commit()  # keep the failure record even though the request fails
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, INVALID)
 
     throttle.clear_failures(db, user.username)
     issued = create_session(db, user, settings, now, source)
+    audit.record(db, user.username, "auth.login", f"user:{user.username}", {"source": source})
     db.commit()
     _set_cookie(response, issued.token, settings)
     security_event(log, "login_succeeded", username=user.username, source=source)
     return MeResponse(
-        username=user.username, display_name=user.display_name, csrf_token=issued.csrf_token
+        username=user.username,
+        display_name=user.display_name,
+        csrf_token=issued.csrf_token,
+        roles=sorted(set(user.roles or ()) & ROLES),
     )
 
 
@@ -102,6 +111,7 @@ def login(
 def logout(principal: PrincipalDep, response: Response, db: DbDep) -> None:
     """End the current session and clear the cookie."""
     end_session(db, principal.session_id)
+    audit.record(db, principal.username, "auth.logout", f"user:{principal.username}")
     db.commit()
     response.delete_cookie(COOKIE_NAME, path="/", secure=True, httponly=True, samesite="strict")
     security_event(log, "logout", username=principal.username)
@@ -114,6 +124,7 @@ def me(principal: PrincipalDep) -> MeResponse:
         username=principal.username,
         display_name=principal.display_name,
         csrf_token=principal.csrf_token,
+        roles=sorted(principal.roles),
     )
 
 

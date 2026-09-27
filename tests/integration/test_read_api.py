@@ -25,7 +25,7 @@ def api(engine: Engine, db_settings: Settings) -> Iterator[TestClient]:
     factory = make_session_factory(engine)
     load_demo(factory, months=12)
     with transaction(factory) as db:
-        ensure_local_user(db, TEST_USER, TEST_PASSWORD, "Test User")
+        ensure_local_user(db, TEST_USER, TEST_PASSWORD, "Test User", ("admin",))
     settings = db_settings.model_copy(update={"rate_limit_per_address": 100_000})
     app = create_app(settings)
     with TestClient(app, base_url=TEST_ORIGIN, headers={"Origin": TEST_ORIGIN}) as client:

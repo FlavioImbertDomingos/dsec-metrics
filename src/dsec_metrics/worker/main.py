@@ -98,7 +98,7 @@ def main() -> None:
         problems = [*content.problems, *cross_check(content, instance_queries)]
         if not problems:
             with transaction(factory) as db:
-                sync_definitions(db, content)
+                sync_definitions(db, content, "system:worker")
                 ids = sync_schedules(db, content, datetime.now(UTC))
             log.info("schedules registered", extra={"event": "schedules", "schedules": ids})
         else:

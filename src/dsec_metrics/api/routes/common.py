@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException, Query, status
 
-from dsec_metrics.api.policy import DbDep, PrincipalDep
+from dsec_metrics.api.policy import DbDep, StaffDep
 from dsec_metrics.api.queries import EVERYTHING, Catalog, Scope, load_catalog
 
 NAME = r"^[A-Za-z0-9][A-Za-z0-9 _.:-]{0,63}$"
@@ -32,8 +32,9 @@ def dimension_filters(
 FiltersDep = Annotated[dict[str, str], Depends(dimension_filters)]
 
 
-def caller_scope(principal: PrincipalDep) -> Scope:
-    """Business units the caller may see. Everything until M5 adds grants."""
+def caller_scope(principal: StaffDep) -> Scope:
+    """Business units the caller may see. Staff only: auditors use the audit room.
+    Everything until M5 adds business-unit grants."""
     del principal
     return EVERYTHING
 
