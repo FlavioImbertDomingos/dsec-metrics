@@ -36,7 +36,8 @@ x-app: &app
     DSEC_DB_PASSWORD_FILE: /run/secrets/db_password
     DSEC_DB_SSLMODE: verify-full
     DSEC_DB_SSLROOTCERT: /run/secrets/dev_ca_cert
-  secrets: [db_password, dev_ca_cert]
+    DSEC_REPORT_SIGNING_KEY_FILE: /run/secrets/report_signing_key
+  secrets: [db_password, dev_ca_cert, report_signing_key]
   tmpfs:
     - /tmp:size=16m,mode=1777
     - /run/dsec:size=1m,uid=65532,gid=65532,mode=0700
@@ -178,6 +179,8 @@ secrets:
     file: ./deploy/compose/secrets/db_password
   dev_admin_password:
     file: ./deploy/compose/secrets/dev_admin_password
+  report_signing_key:
+    file: ./deploy/compose/secrets/report_signing_key
   dev_ca_cert:
     file: ./deploy/compose/secrets/dev_ca.crt
   db_tls_cert:

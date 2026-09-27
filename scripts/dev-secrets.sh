@@ -1,6 +1,7 @@
 #!/bin/sh
 # Create local secrets for the development Compose stack:
 #   - random passwords for Postgres and the dev admin account
+#   - an Ed25519 key for signing evidence packages
 #   - a short-lived development CA, name-constrained to local names, that signs the
 #     Postgres server certificate and the certificate Caddy serves
 # The CA private key is deleted once both certificates are signed, so the CA cannot
@@ -84,6 +85,22 @@ rm -f "$WORK/ca.key"
 rand 32 > "$DIR/db_password"
 rand 24 > "$DIR/dev_admin_password"
 
+# Ed25519 key that signs evidence package manifests. LibreSSL before 3.7 (the one macOS
+# ships) cannot make Ed25519 keys, so try OpenSSL 3 from Homebrew too. Without one, leave
+# an empty placeholder: `make signing-key` fills it using the app image.
+SIGNING_KEY_DONE=0
+for ossl in openssl /opt/homebrew/opt/openssl@3/bin/openssl /usr/local/opt/openssl@3/bin/openssl; do
+  if command -v "$ossl" > /dev/null 2>&1 &&
+     "$ossl" genpkey -algorithm ed25519 -out "$DIR/report_signing_key" 2> /dev/null; then
+    "$ossl" pkey -in "$DIR/report_signing_key" -pubout -out "$DIR/report_signing_key.pub"
+    SIGNING_KEY_DONE=1
+    break
+  fi
+done
+if [ "$SIGNING_KEY_DONE" = 0 ]; then
+  : > "$DIR/report_signing_key"
+fi
+
 # Containers run as different users (Postgres as 999, the app and Caddy as 65532), so
 # the files are world-readable inside a directory only you can open.
 chmod 644 "$DIR"/*
@@ -92,3 +109,6 @@ chmod 700 "$DIR"
 echo "Wrote development secrets to $DIR"
 echo "Dev admin: dev-admin / $(cat "$DIR/dev_admin_password")"
 echo "Trust $DIR/dev_ca.crt in your OS for a clean padlock, or accept the browser warning."
+if [ "$SIGNING_KEY_DONE" = 0 ]; then
+  echo "No OpenSSL with Ed25519 here: run 'make signing-key' after the first 'docker compose up'."
+fi

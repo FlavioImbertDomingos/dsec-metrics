@@ -46,6 +46,8 @@ jobs:
         with:
           version: ${{ env.UV_VERSION }}
           enable-cache: false
+      # Pango and friends let the tests exercise PDF rendering (ADR-0010).
+      - run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-dejavu-core
       - run: make test-python
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()

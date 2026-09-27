@@ -39,9 +39,17 @@ setup: ## Install Python and web dependencies from the lock files
 	$(UV) sync --frozen
 	cd web && $(PNPM) install --frozen-lockfile
 
-.PHONY: dev-secrets
-dev-secrets: ## Create local passwords and a development CA (once)
+.PHONY: dev-secrets signing-key
+dev-secrets: ## Create local passwords, a development CA and a report signing key (once)
 	sh scripts/dev-secrets.sh
+
+signing-key: ## Create the report signing key with the app image (when dev-secrets could not)
+	$(COMPOSE) run --rm --no-deps --user "$$(id -u):$$(id -g)" \
+		-v "$(CURDIR)/deploy/compose/secrets:/out" api \
+		keys generate --private-key /out/report_signing_key \
+		--public-key /out/report_signing_key.pub
+	chmod 644 deploy/compose/secrets/report_signing_key
+	$(COMPOSE) up -d --wait api worker
 
 ## ---- lint -------------------------------------------------------------------
 
@@ -136,6 +144,9 @@ demo: up ## Load 12 months of sample data into the running stack
 	$(COMPOSE) exec -T api dsec-metrics demo > /dev/null
 
 e2e: demo ## Playwright and axe-core against the running stack with sample data
+	$(COMPOSE) exec -T api dsec-metrics users grant-auditor e2e-auditor \
+		--framework pci-dss-4.0.1 --period-start 2026-01-01 --period-end 2026-12-31 \
+		--days 1 --password-file - < deploy/compose/secrets/dev_admin_password > /dev/null
 	cd web && $(PNPM) run e2e
 
 screenshot: demo ## Regenerate docs/assets/screenshot.png
