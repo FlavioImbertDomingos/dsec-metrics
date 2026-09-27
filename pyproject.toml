@@ -45,6 +45,13 @@ dsec-metrics = "dsec_metrics.cli.main:app"
 file = "dsec_metrics.plugins.collectors.file:FileCollector"
 sample = "dsec_metrics.plugins.collectors.sample:SampleCollector"
 
+[project.entry-points."dsec_metrics.renderers"]
+csv = "dsec_metrics.plugins.renderers.csv:CsvRenderer"
+html = "dsec_metrics.plugins.renderers.pdf:HtmlRenderer"
+json = "dsec_metrics.plugins.renderers.json:JsonRenderer"
+pdf = "dsec_metrics.plugins.renderers.pdf:PdfRenderer"
+xlsx = "dsec_metrics.plugins.renderers.xlsx:XlsxRenderer"
+
 [project.entry-points."dsec_metrics.secret_providers"]
 env = "dsec_metrics.plugins.secrets.env:EnvSecretProvider"
 file = "dsec_metrics.plugins.secrets.file:FileSecretProvider"

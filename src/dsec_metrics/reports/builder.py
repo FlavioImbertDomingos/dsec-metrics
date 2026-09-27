@@ -16,10 +16,7 @@ from dsec_metrics.core.canonical import canonical_hash
 from dsec_metrics.core.definitions import Metric
 from dsec_metrics.core.evaluator import InputBatch, evaluate
 from dsec_metrics.db.models import RecordBatchRow, ReportPackage
-from dsec_metrics.plugins.renderers.csv import CsvRenderer
-from dsec_metrics.plugins.renderers.json import JsonRenderer
-from dsec_metrics.plugins.renderers.pdf import HtmlRenderer, PdfRenderer
-from dsec_metrics.plugins.renderers.xlsx import XlsxRenderer
+from dsec_metrics.plugins.sdk.registry import renderer_class
 from dsec_metrics.plugins.sdk.renderer import Renderer
 from dsec_metrics.reports.data import ReportData, ReportRequest, collect
 from dsec_metrics.reports.package import (
@@ -33,10 +30,11 @@ from dsec_metrics.reports.verify import verify_package
 
 
 def renderers() -> list[Renderer]:
-    """PDF when WeasyPrint can run here, otherwise HTML; then XLSX, JSON and CSV."""
-    pdf = PdfRenderer()
-    first: Renderer = pdf if pdf.available() else HtmlRenderer()
-    return [first, XlsxRenderer(), JsonRenderer(), CsvRenderer()]
+    """PDF when WeasyPrint can run here, otherwise HTML; then XLSX, JSON and CSV. Each is
+    loaded through the ``dsec_metrics.renderers`` entry point group by name."""
+    pdf = renderer_class("pdf")()
+    first = pdf if pdf.available() else renderer_class("html")()
+    return [first, *(renderer_class(name)() for name in ("xlsx", "json", "csv"))]
 
 
 def _batch_file(batch: RecordBatchRow) -> PackageFile:

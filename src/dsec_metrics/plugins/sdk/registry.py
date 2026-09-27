@@ -6,6 +6,7 @@ from importlib.metadata import EntryPoint, entry_points
 from typing import cast
 
 from dsec_metrics.plugins.sdk.base import Collector
+from dsec_metrics.plugins.sdk.renderer import Renderer
 from dsec_metrics.plugins.sdk.secrets import SecretProvider, SecretResolver
 
 COLLECTORS = "dsec_metrics.collectors"
@@ -41,6 +42,11 @@ def load(group: str, name: str, base: type) -> type:
 def collector_class(name: str) -> type[Collector]:
     """The collector plugin class registered under ``name``."""
     return cast(type[Collector], load(COLLECTORS, name, Collector))
+
+
+def renderer_class(name: str) -> type[Renderer]:
+    """The renderer plugin class registered under ``name``."""
+    return cast(type[Renderer], load(RENDERERS, name, Renderer))
 
 
 def default_secret_resolver() -> SecretResolver:

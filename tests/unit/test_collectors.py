@@ -17,10 +17,12 @@ from dsec_metrics.plugins.collectors.sample import (
 from dsec_metrics.plugins.sdk import CollectorError, SecretError, SecretResolver
 from dsec_metrics.plugins.sdk.registry import (
     COLLECTORS,
+    RENDERERS,
     PluginError,
     collector_class,
     default_secret_resolver,
     plugin_names,
+    renderer_class,
 )
 from dsec_metrics.plugins.sdk.testing import check_collector_class, collect_all
 from dsec_metrics.plugins.secrets.env import EnvSecretProvider
@@ -40,6 +42,10 @@ def test_registry() -> None:
     with pytest.raises(PluginError):
         collector_class("nope")
     assert default_secret_resolver().schemes == ["env", "file"]
+    assert plugin_names(RENDERERS) == ["csv", "html", "json", "pdf", "xlsx"]
+    assert renderer_class("xlsx").name == "xlsx"
+    with pytest.raises(PluginError):
+        renderer_class("docx")
 
 
 @pytest.mark.parametrize("cls", [SampleCollector, FileCollector])
