@@ -138,6 +138,7 @@ def test_exceptions_register(api: TestClient) -> None:
 def test_dashboards_resolve_every_widget(api: TestClient, dashboard_id: str) -> None:
     dashboard = get(api, f"/api/dashboards/{dashboard_id}")
     assert dashboard["as_of"] == "2026-09-30"
+    assert dashboard["dimensions"]["business_unit"] == ["cards", "payments", "retail"]
     for widget in dashboard["widgets"]:
         assert widget["title"]
         kind = widget["widget"]

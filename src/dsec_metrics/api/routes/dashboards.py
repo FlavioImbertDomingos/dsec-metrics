@@ -80,10 +80,9 @@ class Resolver:
         }
         periods = max((w.periods for w in dashboard.layout), default=12)
         self.history = q.histories(db, [(m, c.key) for m, c in self.choices.items()], periods)
-        needs_slices = {
-            m for w in dashboard.layout if w.widget in {"bar", "heatmap"} for m in w.metric_ids()
-        }
-        self.slices = q.latest_slices(db, needs_slices & set(self.metrics), scope)
+        # Every slice on the latest date: for bar and heatmap cells, and for the values
+        # the filter bar offers.
+        self.slices = q.latest_slices(db, self.metrics, scope)
         kinds = {w.widget for w in dashboard.layout}
         self.exceptions = (
             q.load_register(db, catalog, "exceptions", scope, self.filters)
@@ -106,10 +105,20 @@ class Resolver:
             refresh=self.dashboard.refresh,
             as_of=max(dates) if dates else None,
             filters=self.filters,
+            dimensions=self.dimension_values(),
             widgets=[self.widget(w) for w in self.dashboard.layout],
         )
 
     # Helpers.
+
+    def dimension_values(self) -> dict[str, list[str]]:
+        """Values of each dimension that some metric on this dashboard is sliced by."""
+        found: dict[str, set[str]] = {}
+        for slices in self.slices.values():
+            for s in slices:
+                for key, value in s.dimensions.items():
+                    found.setdefault(key, set()).add(value)
+        return {key: sorted(values) for key, values in sorted(found.items())}
 
     def summary(self, metric_id: str) -> r.MetricSummary:
         return q.metric_summary(self.metrics[metric_id], self.latest.get(metric_id))

@@ -317,4 +317,5 @@ class DashboardOut(DashboardSummary):
 
     as_of: date | None
     filters: dict[str, str]
+    dimensions: dict[str, list[str]]
     widgets: list[Widget]
