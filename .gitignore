@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+web/dist/
+web/coverage/
+web/test-results/
+web/playwright-report/
+web/blob-report/
+
+# Docs
+site/
+
+# Local configuration and secrets
+.env
+deploy/compose/secrets/*
+!deploy/compose/secrets/.gitkeep
+
+# Scan and build outputs
+reports/
+*.sbom.json
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
