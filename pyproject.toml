@@ -1,0 +1,124 @@
+[project]
+name = "dsec-metrics"
+dynamic = ["version"]
+description = "Self-hosted compliance metrics and audit evidence platform for data security teams"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "The dsec-metrics authors" }]
+requires-python = ">=3.12,<3.13"
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Framework :: FastAPI",
+  "Intended Audience :: System Administrators",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Security",
+  "Typing :: Typed",
+]
+dependencies = [
+  "alembic>=1.16",
+  "argon2-cffi>=25.1",
+  "fastapi>=0.118",
+  "psycopg[binary]>=3.2",
+  "pydantic>=2.11",
+  "pydantic-settings>=2.10",
+  "sqlalchemy>=2.0.43",
+  "typer>=0.19",
+  "uvicorn>=0.37",
+]
+
+[project.urls]
+Homepage = "https://github.com/FlavioImbertDomingos/dsec-metrics"
+Documentation = "https://flavioimbertdomingos.github.io/dsec-metrics/"
+Issues = "https://github.com/FlavioImbertDomingos/dsec-metrics/issues"
+
+[project.scripts]
+dsec-metrics = "dsec_metrics.cli.main:app"
+
+[dependency-groups]
+dev = [
+  "bandit>=1.8",
+  "httpx>=0.28",
+  "mypy>=1.18",
+  "pip-audit>=2.9",
+  "pytest>=8.4",
+  "pytest-cov>=7.0",
+  "ruff>=0.13",
+  "testcontainers>=4.13",
+  "zizmor>=1.14",
+]
+docs = [
+  "mkdocs-material>=9.6",
+]
+
+[tool.uv]
+default-groups = ["dev", "docs"]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/dsec_metrics/__about__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dsec_metrics"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "A", "ASYNC", "B", "BLE", "C4", "DTZ", "E", "F", "FAST", "I", "N", "PIE", "PT",
+  "PTH", "RET", "RUF", "S", "SIM", "SLF", "T20", "TID", "UP", "W",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106", "SLF001"]
+"scripts/**" = ["T201"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+files = ["src", "tests"]
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+module = ["testcontainers.*"]
+ignore_missing_imports = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = ["-ra", "--strict-markers", "--strict-config"]
+filterwarnings = [
+  "error",
+  # Starlette now prefers httpx2 for its test client. Switching needs approval
+  # (new dependency); tracked as an open question in docs/plans/m0.md.
+  "ignore:Using `httpx` with `starlette.testclient` is deprecated:starlette.exceptions.StarletteDeprecationWarning",
+]
+markers = ["integration: needs Docker for a Postgres container"]
+
+[tool.coverage.run]
+source = ["src/dsec_metrics"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError", "@overload"]
+
+[tool.bandit]
+exclude_dirs = ["tests", "web", ".venv"]
