@@ -372,6 +372,7 @@ dev = [
     { name = "zizmor" },
 ]
 docs = [
+    { name = "mkdocs" },
     { name = "mkdocs-material" },
 ]
 
@@ -400,7 +401,10 @@ dev = [
     { name = "testcontainers", specifier = ">=4.13" },
     { name = "zizmor", specifier = ">=1.14" },
 ]
-docs = [{ name = "mkdocs-material", specifier = ">=9.6" }]
+docs = [
+    { name = "mkdocs", specifier = ">=1.6,<2" },
+    { name = "mkdocs-material", specifier = ">=9.6" },
+]
 
 [[package]]
 name = "fastapi"
