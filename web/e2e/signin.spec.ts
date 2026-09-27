@@ -8,10 +8,16 @@ function credentials(): { username: string; password: string } {
 }
 
 async function expectNoAxeViolations(page: Page) {
+  // Colors mid-transition can fail contrast checks; wait until nothing is animating.
+  await page.waitForFunction(() => document.getAnimations().length === 0);
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     .analyze();
-  expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+  // Name each failing element so a CI log is enough to find and fix it.
+  const found = results.violations.flatMap((v) =>
+    v.nodes.map((n) => `${v.id}: ${n.target.join(" ")} :: ${n.failureSummary ?? v.help}`),
+  );
+  expect(found).toEqual([]);
 }
 
 async function setTheme(page: Page, theme: "Light" | "Dark") {

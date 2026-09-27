@@ -66,6 +66,24 @@
   }
 }
 
+/* Set briefly while the theme changes, so colors switch without animating. */
+.theme-switching,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 @utility tabular {
   font-variant-numeric: tabular-nums;
 }
