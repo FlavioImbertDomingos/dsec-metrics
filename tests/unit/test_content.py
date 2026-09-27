@@ -23,6 +23,7 @@ def test_default_content_is_valid_and_complete() -> None:
         "iso-27001-2022",
     }
     assert {m.type.value for m in content.metrics.values()} == {"kpi", "kri", "kci"}
+    assert set(content.registers) == {"exceptions", "findings"}
 
 
 def test_no_copyrighted_requirement_text() -> None:
@@ -108,3 +109,17 @@ def test_unknown_query_is_reported(tmp_path: Path, query: str) -> None:
     problems = [str(p) for p in cross_check(content, instance_queries)]
     has = any("has no query 'missing_query'" in p for p in problems)
     assert has is (query == "missing_query")
+
+
+def test_registers_are_checked(tmp_path: Path) -> None:
+    write(tmp_path, "collectors/sample.yaml", "id: sample\nplugin: sample\n")
+    write(
+        tmp_path,
+        "registers/exceptions.yaml",
+        "id: exceptions\nsource: {collector: sample, query: nothing}\n",
+    )
+    write(tmp_path, "registers/other.yaml", "id: risks\nsource: {collector: sample, query: x}\n")
+    content = load_content(tmp_path)
+    assert any("registers/other.yaml" in str(p) for p in content.problems)
+    problems = [str(p) for p in cross_check(content, instance_queries)]
+    assert any("has no query 'nothing'" in p for p in problems)

@@ -1,0 +1,6 @@
+# The findings register shown in control detail and the findings burndown.
+id: findings
+description: Issues raised by audits and assessments, from the GRC tool.
+source:
+  collector: sample
+  query: findings

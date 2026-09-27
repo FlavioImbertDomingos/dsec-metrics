@@ -241,7 +241,7 @@ def validate(content_dir: ContentOpt = None) -> None:
         "ok: "
         f"{len(content.frameworks)} frameworks, {len(content.metrics)} metrics, "
         f"{len(content.controls)} controls, {len(content.dashboards)} dashboards, "
-        f"{len(content.collectors)} collectors"
+        f"{len(content.collectors)} collectors, {len(content.registers)} registers"
     )
 
 

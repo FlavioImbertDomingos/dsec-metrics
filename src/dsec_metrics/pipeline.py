@@ -314,13 +314,15 @@ def evaluate_all(
 
 
 def sources_needed(content: Content) -> dict[str, set[str]]:
-    """Collector instance id -> queries that metrics and control evidence use."""
+    """Collector instance id -> queries that metrics, control evidence and registers use."""
     needed: dict[str, set[str]] = {}
     for metric in content.metrics.values():
         needed.setdefault(metric.source.collector, set()).add(metric.source.query)
     for control in content.controls.values():
         for ev in control.evidence:
             needed.setdefault(ev.collector, set()).add(ev.query)
+    for register in content.registers.values():
+        needed.setdefault(register.source.collector, set()).add(register.source.query)
     return needed
 
 

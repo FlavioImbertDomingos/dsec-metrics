@@ -409,7 +409,16 @@ class CollectorInstance(Strict):
         return value
 
 
-Definition = Framework | Metric | Control | Dashboard | CollectorInstance
+class Register(Strict):
+    """Where a register (exceptions or findings) comes from. The GRC tool stays the system
+    of record; the platform reads the latest batch from this source."""
+
+    id: Literal["exceptions", "findings"]
+    source: Source
+    description: str = ""
+
+
+Definition = Framework | Metric | Control | Dashboard | CollectorInstance | Register
 
 KINDS: dict[str, type[Strict]] = {
     "framework": Framework,
@@ -417,6 +426,7 @@ KINDS: dict[str, type[Strict]] = {
     "control": Control,
     "dashboard": Dashboard,
     "collector": CollectorInstance,
+    "register": Register,
 }
 
 

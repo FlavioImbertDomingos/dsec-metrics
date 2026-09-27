@@ -1,8 +1,8 @@
 """Load and validate the ``content/`` directory: definitions as code.
 
-Layout: ``frameworks/``, ``metrics/``, ``controls/``, ``dashboards/`` and ``collectors/``,
-each holding YAML files with one definition, or a list of definitions. YAML is parsed
-with ``safe_load`` semantics and duplicate keys are errors.
+Layout: ``frameworks/``, ``metrics/``, ``controls/``, ``dashboards/``, ``collectors/`` and
+``registers/``, each holding YAML files with one definition, or a list of definitions.
+YAML is parsed with ``safe_load`` semantics and duplicate keys are errors.
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ from dsec_metrics.core.definitions import (
     Dashboard,
     Framework,
     Metric,
+    Register,
     Strict,
 )
 
@@ -33,6 +34,7 @@ DIRECTORIES: dict[str, str] = {
     "controls": "control",
     "dashboards": "dashboard",
     "collectors": "collector",
+    "registers": "register",
 }
 
 
@@ -75,6 +77,7 @@ class Content:
     controls: dict[str, Control] = field(default_factory=dict)
     dashboards: dict[str, Dashboard] = field(default_factory=dict)
     collectors: dict[str, CollectorInstance] = field(default_factory=dict)
+    registers: dict[str, Register] = field(default_factory=dict)
     sources: dict[tuple[str, str], str] = field(default_factory=dict)
     problems: list[Problem] = field(default_factory=list)
 
@@ -86,12 +89,13 @@ class Content:
             "control": self.controls,
             "dashboard": self.dashboards,
             "collector": self.collectors,
+            "register": self.registers,
         }
         return stores[kind]
 
     def items(self) -> Iterable[tuple[str, str, Strict]]:
         """(kind, id, definition) for every definition, in a stable order."""
-        for kind in ("framework", "collector", "metric", "control", "dashboard"):
+        for kind in ("framework", "collector", "metric", "control", "dashboard", "register"):
             for def_id, definition in sorted(self.by_kind(kind).items()):
                 yield kind, def_id, definition
 
@@ -199,20 +203,21 @@ def cross_check(content: Content, queries_for: QueryLister) -> list[Problem]:
                 )
             )
 
+    def check_source(kind: str, def_id: str, inst: str, query: str) -> None:
+        if inst not in content.collectors:
+            problems.append(Problem(src(kind, def_id), f"unknown collector instance {inst!r}"))
+            return
+        qs = instance_queries.get(inst)
+        if qs is not None and query not in qs:
+            problems.append(
+                Problem(src(kind, def_id), f"collector {inst!r} has no query {query!r}")
+            )
+
     for mid, metric in content.metrics.items():
         check_refs("metric", mid, metric.frameworks)
-        inst = metric.source.collector
-        if inst not in content.collectors:
-            problems.append(Problem(src("metric", mid), f"unknown collector instance {inst!r}"))
-        else:
-            qs = instance_queries.get(inst)
-            if qs is not None and metric.source.query not in qs:
-                problems.append(
-                    Problem(
-                        src("metric", mid),
-                        f"collector {inst!r} has no query {metric.source.query!r}",
-                    )
-                )
+        check_source("metric", mid, metric.source.collector, metric.source.query)
+    for rid, register in content.registers.items():
+        check_source("register", rid, register.source.collector, register.source.query)
     for cid, control in content.controls.items():
         check_refs("control", cid, control.requirements)
         for m in control.metrics:

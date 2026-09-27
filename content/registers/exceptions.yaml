@@ -1,0 +1,7 @@
+# The exceptions register shown on the exceptions screen and in control detail.
+# Records must carry the fields listed in docs/definitions.md.
+id: exceptions
+description: Approved deviations from controls, from the GRC tool's exception register.
+source:
+  collector: sample
+  query: open_exceptions

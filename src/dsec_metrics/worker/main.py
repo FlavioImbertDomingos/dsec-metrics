@@ -2,8 +2,9 @@
 
 Two things run here. The scheduler (in a background thread) runs each collector instance on
 its cron schedule and re-evaluates the metrics that read from it. The main loop checks
-the database every ``worker_heartbeat_seconds``, purges expired sessions and old sign-in
-failures, and touches the heartbeat file that the container health check reads.
+the database every ``worker_heartbeat_seconds``, purges expired sessions, old sign-in
+failures and old rate-limit counters, and touches the heartbeat file that the container
+health check reads.
 """
 
 from __future__ import annotations
@@ -18,12 +19,14 @@ from types import FrameType
 
 from sqlalchemy.exc import SQLAlchemyError
 
+from dsec_metrics.auth.ratelimit import purge_old_windows
 from dsec_metrics.auth.sessions import purge_expired
 from dsec_metrics.auth.throttle import purge_old_failures
 from dsec_metrics.config import Settings, get_settings, validate_startup
-from dsec_metrics.content import load_content
+from dsec_metrics.content import cross_check, load_content
 from dsec_metrics.db.engine import make_engine, make_session_factory, ping, transaction
 from dsec_metrics.logs import configure_logging
+from dsec_metrics.pipeline import instance_queries, sync_definitions
 from dsec_metrics.worker.jobs import JOBS
 from dsec_metrics.worker.scheduler import run_scheduler, sync_schedules
 
@@ -57,6 +60,7 @@ def run(settings: Settings, stop: threading.Event, max_ticks: int | None = None)
                     now = datetime.now(UTC)
                     removed = purge_expired(db, now)
                     purge_old_failures(db, settings, now)
+                    purge_old_windows(db, now)
                 touch(settings.worker_heartbeat_file)
                 log.info("worker heartbeat", extra={"event": "worker_heartbeat", "purged": removed})
             except SQLAlchemyError as exc:
@@ -91,14 +95,16 @@ def main() -> None:
     engine = make_engine(settings)
     factory = make_session_factory(engine)
     try:
-        if content.ok:
+        problems = [*content.problems, *cross_check(content, instance_queries)]
+        if not problems:
             with transaction(factory) as db:
+                sync_definitions(db, content)
                 ids = sync_schedules(db, content, datetime.now(UTC))
             log.info("schedules registered", extra={"event": "schedules", "schedules": ids})
         else:
             log.error(
-                "content is invalid; schedules left as they were",
-                extra={"event": "content_invalid"},
+                "content is invalid; definitions and schedules left as they were",
+                extra={"event": "content_invalid", "problems": len(problems)},
             )
         scheduler = threading.Thread(
             target=run_scheduler,
