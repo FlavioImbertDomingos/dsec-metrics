@@ -5,7 +5,13 @@ set -eu
 base="$1"
 head="$2"
 missing=0
+# Dependabot cannot sign off its commits. Its author address is exempt; this check is a
+# contribution-policy control, not a security boundary.
+bot='49699333+dependabot[bot]@users.noreply.github.com'
 for sha in $(git rev-list --no-merges "$base..$head"); do
+  if [ "$(git show -s --format=%ae "$sha")" = "$bot" ]; then
+    continue
+  fi
   if ! git show -s --format=%B "$sha" | grep -q '^Signed-off-by: '; then
     echo "missing sign-off: $(git show -s --format='%h %s' "$sha")"
     missing=1
