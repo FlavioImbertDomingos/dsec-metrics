@@ -1,0 +1,13 @@
+/* Print: drop interactive chrome so a page can go straight into a meeting pack. */
+@media print {
+  [data-print="hide"] {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+}
