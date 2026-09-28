@@ -17,14 +17,13 @@ x-hardening: &hardening
     driver: json-file
     options: { max-size: "10m", max-file: "5" }
 
+# migrate, api and worker run the same image. Only migrate builds or pulls it; api and
+# worker use the local copy. If all three built it, parallel builds would race for the
+# same tag ("image already exists" with Docker Desktop's image store).
 x-app: &app
   <<: *hardening
   image: ghcr.io/flavioimbertdomingos/dsec-metrics:${DSEC_VERSION:-dev}
-  build:
-    context: .
-    dockerfile: deploy/docker/app.Dockerfile
-    secrets: [build_ca]
-  pull_policy: ${DSEC_PULL_POLICY:-build}
+  pull_policy: never
   environment: &app-env
     DSEC_MODE: ${DSEC_MODE:-development}
     DSEC_LOCAL_ACCOUNTS: ${DSEC_LOCAL_ACCOUNTS:-true}
@@ -104,6 +103,11 @@ services:
 
   migrate:
     <<: *app
+    build:
+      context: .
+      dockerfile: deploy/docker/app.Dockerfile
+      secrets: [build_ca]
+    pull_policy: ${DSEC_PULL_POLICY:-build}
     command: ["bootstrap"]
     environment:
       <<: *app-env

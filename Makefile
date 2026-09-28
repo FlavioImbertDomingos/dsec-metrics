@@ -45,7 +45,7 @@ dev-secrets: ## Create local passwords, a development CA and a report signing ke
 
 signing-key: ## Create the report signing key with the app image (when dev-secrets could not)
 	$(COMPOSE) run --rm --no-deps --user "$$(id -u):$$(id -g)" \
-		-v "$(CURDIR)/deploy/compose/secrets:/out" api \
+		-v "$(CURDIR)/deploy/compose/secrets:/out" migrate \
 		keys generate --private-key /out/report_signing_key \
 		--public-key /out/report_signing_key.pub
 	chmod 644 deploy/compose/secrets/report_signing_key
