@@ -31,6 +31,11 @@ RUN --mount=type=secret,id=build_ca,required=false \
     uv sync --no-default-groups --no-editable \
  && install -d -o 65532 -g 65532 -m 0700 /rootfs/run/dsec
 
+# Definitions are read by the non-root runtime user. A checkout made with a strict umask
+# (files 600, folders 700) would otherwise be unreadable in the image, so normalise them.
+COPY content /rootfs/app/content
+RUN chmod -R u=rwX,go=rX /rootfs/app/content
+
 # The runtime never installs packages. Remove pip and ensurepip from the interpreter so
 # their vendored libraries are not shipped (or scanned) at all.
 RUN set -eu; for py in /opt/python/cpython-3.12*; do \
@@ -48,7 +53,6 @@ LABEL org.opencontainers.image.title="dsec-metrics" \
 COPY --from=build /opt/python /opt/python
 COPY --from=build /app/.venv /app/.venv
 COPY --from=build /rootfs/ /
-COPY content /app/content
 
 ENV PATH=/app/.venv/bin:/usr/bin:/bin \
     PYTHONDONTWRITEBYTECODE=1 \

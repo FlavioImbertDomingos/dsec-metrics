@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -59,6 +60,28 @@ def test_yaml_cannot_construct_python_objects(tmp_path: Path) -> None:
 
 def test_missing_directory() -> None:
     assert not load_content(Path("/nonexistent/content")).ok
+
+
+def test_unreadable_directory_is_a_problem_not_an_empty_kind(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A folder the runtime user cannot list must not look like a folder with no
+    definitions (this happened with a checkout made under a strict umask)."""
+    (tmp_path / "metrics").mkdir()
+    (tmp_path / "metrics" / "m.yaml").write_text("id: x\n", encoding="utf-8")
+    real_iterdir = Path.iterdir
+
+    def iterdir(self: Path) -> Any:
+        if self.name == "metrics":
+            raise PermissionError(13, "Permission denied")
+        return real_iterdir(self)
+
+    monkeypatch.setattr(Path, "iterdir", iterdir)
+    content = load_content(tmp_path)
+    assert [str(p) for p in content.problems] == [
+        "metrics: cannot read directory: Permission denied"
+    ]
+    assert not content.metrics
 
 
 def test_cross_reference_problems(tmp_path: Path) -> None:

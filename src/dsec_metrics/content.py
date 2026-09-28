@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
+from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any
 
@@ -134,7 +135,16 @@ def load_content(root: Path) -> Content:
         return content
     for directory, kind in DIRECTORIES.items():
         model = KINDS[kind]
-        for path in sorted((root / directory).glob("*.y*ml")):
+        try:
+            paths = sorted(p for p in (root / directory).iterdir() if fnmatch(p.name, "*.y*ml"))
+        except FileNotFoundError:
+            continue
+        except OSError as exc:
+            # glob() would quietly return nothing here, and the app would start with no
+            # definitions of this kind. Say so instead.
+            content.problems.append(Problem(directory, f"cannot read directory: {exc.strerror}"))
+            continue
+        for path in paths:
             rel = str(path.relative_to(root))
             try:
                 data = _read_yaml(path)
