@@ -15,7 +15,7 @@ RUN pnpm run build
 
 # Caddy is built from source (deploy/docker/caddy) with a current Go toolchain and
 # patched dependencies; the upstream binary lags on Go security releases.
-FROM golang:1.26.8-trixie@sha256:bdca99a00bc16590cb1a0bb4e698f5fc5d6a64e4d5eef13d9f18a0ee08e5fa65 AS caddy
+FROM golang:1.27.1-trixie@sha256:433790e515d27dc6003e847e644cc0af956985cf315c1c58a3b73ee2dd305183 AS caddy
 ENV CGO_ENABLED=0 GOTOOLCHAIN=local GOFLAGS=-mod=readonly
 WORKDIR /build
 COPY deploy/docker/caddy/go.mod deploy/docker/caddy/go.sum deploy/docker/caddy/main.go ./
