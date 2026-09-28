@@ -89,3 +89,4 @@ nav:
       - M2 dashboards: plans/m2.md
       - M3 audit reports: plans/m3.md
       - M4 real collectors: plans/m4.md
+      - "Proposal: Microsoft Purview collector": plans/purview.md
