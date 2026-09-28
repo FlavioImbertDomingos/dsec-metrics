@@ -46,6 +46,7 @@ validation:
 
 nav:
   - Home: index.md
+  - Screenshots: screenshots.md
   - Getting started: getting-started.md
   - Architecture: architecture.md
   - Definition language: definitions.md

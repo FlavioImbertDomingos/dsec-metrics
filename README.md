@@ -6,6 +6,19 @@ dsec-metrics is a self-hosted compliance metrics and audit evidence platform for
 
 > Status: pre-alpha. M0 to M4 are in place: the Compose stack, development sign-in, CI with every security gate, definitions as code, the evaluator, redaction, the three audience dashboards with drill-down to source records, signed evidence packages with an independent verifier, auditor access, a hash-chained audit log, and read-only collectors for files, any JSON API, AWS, Vault, Jira, ServiceNow and GitHub behind an outbound host allowlist. OIDC, full RBAC and the Helm chart arrive in M5. See [CLAUDE.md](CLAUDE.md) for the full brief and milestones.
 
+## Screenshots
+
+Dark mode, with the synthetic sample data from `make demo`. More in [docs/screenshots.md](docs/screenshots.md).
+
+| | |
+| --- | --- |
+| ![Overview](docs/assets/screenshots/01-overview.png) | ![Risk committee](docs/assets/screenshots/04-risk-committee.png) |
+| Overview | Risk committee |
+| ![Management](docs/assets/screenshots/03-management.png) | ![Team operations](docs/assets/screenshots/02-team-operations.png) |
+| Management | Team operations |
+| ![Exceptions](docs/assets/screenshots/07-exceptions.png) | ![Audit log](docs/assets/screenshots/11-audit-log.png) |
+| Exceptions | Audit log |
+
 ## Quick start
 
 Requires Docker with Compose v2, `make` and `openssl`.
