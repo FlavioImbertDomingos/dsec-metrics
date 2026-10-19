@@ -2,7 +2,7 @@
 # Application image: API, worker, migrations and CLI, selected by command.
 # Final stage: distroless, no shell, non-root, Python from python-build-standalone.
 
-FROM ghcr.io/astral-sh/uv:0.12.19-trixie-slim@sha256:c40e42de0e1516439b5139d7a214657dbffbbd3d2366661347efae7b8337c197 AS build
+FROM ghcr.io/astral-sh/uv:0.13.2-trixie-slim@sha256:b3fe495db00181df16f38f12cce2d37624e70352ee2f95d62289729fdb430d2a AS build
 
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
@@ -43,7 +43,7 @@ RUN set -eu; for py in /opt/python/cpython-3.12*; do \
              "$py"/lib/python3.12/ensurepip "$py"/bin/pip*; \
     done
 
-FROM gcr.io/distroless/cc-debian13:nonroot@sha256:54df941ed0d06a1bd95ef5e0ce391fd8d9f94b64782dc9a60062727849ee3f97
+FROM gcr.io/distroless/cc-debian13:nonroot@sha256:e792ab3d241a468a4fd7519ddbbebe66b49b5f365771716ea688ad40b6c6f1c2
 
 LABEL org.opencontainers.image.title="dsec-metrics" \
       org.opencontainers.image.description="dsec-metrics API, worker and CLI" \
