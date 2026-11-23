@@ -2,7 +2,7 @@
 # Web image: Caddy serving the built front end and proxying /api.
 # Final stage: distroless static, no shell, non-root.
 
-FROM node:24-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6 AS build
+FROM node:24-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS build
 ENV CI=1 COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 WORKDIR /web
 COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml web/.npmrc ./
@@ -15,7 +15,7 @@ RUN pnpm run build
 
 # Caddy is built from source (deploy/docker/caddy) with a current Go toolchain and
 # patched dependencies; the upstream binary lags on Go security releases.
-FROM golang:1.26.8-trixie@sha256:bdca99a00bc16590cb1a0bb4e698f5fc5d6a64e4d5eef13d9f18a0ee08e5fa65 AS caddy
+FROM golang:1.27.4-trixie@sha256:f18c3d73a184fb0582828510722e723b63a93f7188d11dd223d9be6f6880e65d AS caddy
 ENV CGO_ENABLED=0 GOTOOLCHAIN=local GOFLAGS=-mod=readonly
 WORKDIR /build
 COPY deploy/docker/caddy/go.mod deploy/docker/caddy/go.sum deploy/docker/caddy/main.go ./
@@ -25,7 +25,7 @@ RUN --mount=type=secret,id=build_ca,required=false \
  && mkdir -p /rootfs/run/caddy \
  && chown -R 65532:65532 /rootfs/run/caddy
 
-FROM gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3
+FROM gcr.io/distroless/static-debian13:nonroot@sha256:8ce6dd87e9823c5b48dcfb2c8604714ccb351ce59607327bcc4957448da279b5
 
 LABEL org.opencontainers.image.title="dsec-metrics-web" \
       org.opencontainers.image.description="dsec-metrics web front end and reverse proxy" \
